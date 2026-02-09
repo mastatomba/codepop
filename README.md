@@ -101,6 +101,37 @@ codepop/
 6. User answers 5 multiple-choice questions
 7. Score displayed at the end
 
+## 🎯 Code Style
+
+This project enforces consistent code style using automated tools:
+
+### Backend (Java)
+- **Tool**: Spotless + Google Java Format
+- **Style**: Google Java Style Guide (4-space indentation)
+- **Commands**:
+  ```bash
+  cd codepop-backend
+  ./mvnw spotless:check  # Check for violations
+  ./mvnw spotless:apply  # Auto-fix violations
+  ```
+
+### Frontend (React)
+- **Tools**: Prettier + ESLint
+- **Style**: Standard Prettier (semi-colons, single quotes, 80 char lines)
+- **Commands**:
+  ```bash
+  cd codepop-frontend
+  npm run format:check   # Check formatting
+  npm run format:fix     # Auto-fix formatting
+  npm run lint           # Check linting + formatting
+  ```
+
+### Pre-commit Hooks
+Pre-commit hooks automatically check code style before commits. To bypass in emergencies:
+```bash
+git commit --no-verify -m "message"
+```
+
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

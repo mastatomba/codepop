@@ -228,7 +228,19 @@ All JPA entity classes (`Topic`, `Question`, `QuestionOption`) use Lombok annota
 
 # Clean build artifacts
 ./mvnw clean
+
+# Check code style (Spotless + Google Java Format)
+./mvnw spotless:check
+
+# Auto-fix code style violations
+./mvnw spotless:apply
 ```
+
+**Code Style Enforcement:**
+- **Tool**: Spotless Maven plugin with Google Java Format
+- **Style**: Google Java Style Guide (4-space indentation)
+- **Runs automatically**: On `mvn verify` and pre-commit hooks
+- **IDE Integration**: Configure IntelliJ/Eclipse to use Google Java Format for auto-format on save
 
 ## Features
 

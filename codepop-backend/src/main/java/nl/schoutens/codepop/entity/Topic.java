@@ -1,12 +1,11 @@
 package nl.schoutens.codepop.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "topics")
@@ -16,26 +15,26 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Topic {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(nullable = false, unique = true, length = 100)
-    private String name;
+  @Column(nullable = false, unique = true, length = 100)
+  private String name;
 
-    @Column(length = 50)
-    private String category; // backend, frontend, mobile
+  @Column(length = 50)
+  private String category; // backend, frontend, mobile
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+  @Column(name = "created_at", nullable = false, updatable = false)
+  private LocalDateTime createdAt;
 
-    public Topic(String name, String category) {
-        this.name = name;
-        this.category = category;
-    }
+  public Topic(String name, String category) {
+    this.name = name;
+    this.category = category;
+  }
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+  @PrePersist
+  protected void onCreate() {
+    createdAt = LocalDateTime.now();
+  }
 }

@@ -1,0 +1,27 @@
+{
+  "name": "codepop",
+  "version": "1.0.0",
+  "description": "> A dynamic AI-powered quiz generator for coding topics - pop quiz yourself on anything from Java to React!",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mastatomba/codepop.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mastatomba/codepop/issues"
+  },
+  "homepage": "https://github.com/mastatomba/codepop#readme",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

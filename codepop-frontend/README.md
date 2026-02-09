@@ -32,11 +32,19 @@ The app will be available at `http://localhost:5173`
 ### Available Scripts
 
 ```bash
-npm run dev      # Start dev server with hot reload
-npm run build    # Build for production
-npm run preview  # Preview production build locally
-npm run lint     # Run ESLint
+npm run dev          # Start dev server with hot reload
+npm run build        # Build for production
+npm run preview      # Preview production build locally
+npm run lint         # Run ESLint (includes Prettier checks)
+npm run format:check # Check code formatting (Prettier)
+npm run format:fix   # Auto-fix code formatting
 ```
+
+**Code Style Enforcement:**
+- **Tools**: Prettier + ESLint integration
+- **Style**: Standard Prettier (semi-colons, single quotes, 80 char lines, trailing commas ES5)
+- **Runs automatically**: On pre-commit hooks
+- **IDE Integration**: Install Prettier extension for VS Code/WebStorm to auto-format on save
 
 ## 📁 Project Structure
 
