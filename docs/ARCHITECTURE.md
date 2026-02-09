@@ -28,7 +28,9 @@
 - Question presentation with multiple-choice options
 - Answer tracking and score calculation
 - Toast notifications for errors
-- Session management (browser session)
+- Client-side routing (React Router v7)
+- REST API calls via Axios
+- Built with Vite for fast development
 
 ### Backend (Spring Boot)
 - REST API endpoints for quiz operations
@@ -135,6 +137,23 @@ Get list of supported root topics
 
 ## Technology Integration
 
+### Vite Build Tool
+- Fast HMR (Hot Module Replacement)
+- Optimized production builds
+- Development proxy to backend API
+- ES modules support
+
+### React Router v7
+- Client-side routing
+- Route structure: `/` (home), `/quiz/:topic` (quiz page), `/results` (results)
+- Declarative routing configuration
+
+### Axios HTTP Client
+- REST API communication with backend
+- Centralized API service layer
+- Request/response interceptors
+- Error handling
+
 ### Spring AI - Ollama
 - Auto-configuration for Ollama client
 - Prompt templates for structured output
@@ -154,10 +173,11 @@ Get list of supported root topics
 ## Deployment Architecture
 
 ### Development
-- Frontend: `npm start` on localhost:3000
+- Frontend: Vite dev server on localhost:5173
 - Backend: Spring Boot on localhost:8080
 - Ollama: Local instance on localhost:11434
 - Database: Local SQLite file
+- Frontend proxies `/api` requests to backend
 
 ### Production (Option 1: Hybrid)
 - Frontend: Vercel/Netlify (static hosting)

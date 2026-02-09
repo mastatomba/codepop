@@ -24,8 +24,10 @@ CodePop generates interactive multiple-choice quizzes on coding topics using AI.
 - SQLite
 
 **Frontend:**
-- React *(coming soon)*
-- REST API communication
+- React 19
+- Vite (build tool)
+- React Router v7
+- Axios (REST API client)
 
 ## 🎯 Supported Topics
 
@@ -38,11 +40,19 @@ CodePop generates interactive multiple-choice quizzes on coding topics using AI.
 ## 🚀 Getting Started
 
 ### Prerequisites
+
+**Backend:**
 - JDK 17 or higher
 - Maven 3.6+
 - Ollama installed and running locally (or cloud LLM API key)
 
+**Frontend:**
+- Node.js 18+ (LTS recommended)
+- npm
+
 ### Running Locally
+
+#### Backend
 
 ```bash
 # Clone the repository
@@ -56,14 +66,29 @@ cd codepop-backend
 
 The backend will start on `http://localhost:8080`
 
+#### Frontend
+
+```bash
+# In a new terminal, from the project root
+cd codepop-frontend
+
+# Install dependencies (first time only)
+npm install
+
+# Start the dev server
+npm run dev
+```
+
+The frontend will start on `http://localhost:5173`
+
 ## 📁 Project Structure
 
 ```
 codepop/
-├── codepop-backend/    # Spring Boot backend
-├── frontend/           # React frontend (coming soon)
-├── IDEA.md            # Detailed concept and design decisions
-└── README.md          # This file
+├── codepop-backend/    # Spring Boot backend (Java + Spring Boot)
+├── codepop-frontend/   # React frontend (Vite + React)
+├── docs/               # Architecture and design decisions
+└── README.md           # This file
 ```
 
 ## 🎨 How It Works
@@ -82,8 +107,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🚧 Status
 
-**Current:** Backend development in progress  
-**Next:** Frontend implementation, LLM integration
+**Current:** Frontend development in progress (Phase 2 - Routing & Components)  
+**Completed:** Backend MVP, Frontend project setup  
+**Next:** API integration, UI polish
 
 ---
 

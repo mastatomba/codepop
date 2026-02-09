@@ -12,6 +12,23 @@ This document outlines key architectural and design decisions made for CodePop.
 **Decision:** React over Thymeleaf or other frameworks  
 **Rationale:** Better suited for interactive quiz experience with smooth transitions, real-time feedback, and toast notifications. Cleaner separation between frontend and backend.
 
+### Build Tool: Vite
+**Decision:** Vite over Create React App or other bundlers  
+**Rationale:** 
+- Extremely fast dev server startup and HMR
+- Optimized production builds
+- Modern tooling with ESM support
+- Minimal configuration needed for POC
+- Create React App is being deprecated
+
+### Routing: React Router v7
+**Decision:** React Router over Next.js or other frameworks  
+**Rationale:** 
+- Next.js is overkill for this POC (adds SSR, API routes, complex routing)
+- React Router provides simple client-side routing
+- Perfect for SPA consuming existing REST API
+- Lightweight and focused on routing only
+
 ### Database: SQLite
 **Decision:** SQLite for local storage  
 **Rationale:** Simple file-based database, perfect for POC. No separate database server needed. Easy to deploy and backup.
@@ -77,12 +94,13 @@ This document outlines key architectural and design decisions made for CodePop.
 ## Project Structure
 
 ### Monorepo
-**Decision:** Single repository with `codepop-backend/` and `frontend/` folders  
+**Decision:** Single repository with `codepop-backend/` and `codepop-frontend/` folders  
 **Rationale:** 
 - Easier to manage for POC
 - Shared documentation and issues
 - Simpler deployment setup
 - Version frontend and backend together
+- Clear separation between frontend and backend code
 
 ## Future Considerations
 
