@@ -68,19 +68,21 @@
    - Rejects if no valid root found
 
 3. **Question Retrieval**
-   - Backend checks SQLite for existing questions on topic
+   - Backend parses user input to extract main topic and optional subtopic
+   - Uses fuzzy matching to find questions (e.g., "Java record" matches subtopic "records")
+   - **If subtopic specified**: Only returns questions matching that subtopic (may be 0)
+   - **If no subtopic specified**: Returns all questions for main topic
    - Filters out questions already shown in current session
-   - If 5 questions available, skip to step 5
+   - If 5+ questions available, randomizes and selects 5
 
 4. **LLM Generation** (if needed)
-   - Backend builds prompt with topic and requirements
-   - Calls LLM API with structured output request
-   - LLM returns JSON with questions, options, answers, difficulty
-   - Backend validates and stores in SQLite
+   - If fewer than 5 questions available (including when subtopic has no questions), calls LLM
+   - Backend provides existing question texts to avoid duplicates
+   - LLM returns JSON with questions, options, answers, difficulty, explanations
+   - Backend validates and stores in SQLite with appropriate subtopic
 
 5. **Quiz Assembly**
-   - Backend selects 5 questions (cached + new)
-   - Marks questions as "shown" for current session
+   - Backend selects up to 5 questions (randomized if > 5 available)
    - Returns quiz JSON to frontend
 
 6. **User Interaction**
@@ -89,51 +91,63 @@
    - Frontend calculates score
    - Frontend displays results with explanations
 
-## API Endpoints (Planned)
+## API Endpoints
 
-### POST /api/quiz/generate
-Request quiz for a topic
-```json
-{
-  "topic": "React hooks"
-}
+### GET /api/quiz/{topic}
+
+Get quiz questions for a specific topic with optional subtopic filtering.
+
+**Topic Matching Strategy:**
+- Main topics (19 total): Java, Python, React, JavaScript, etc.
+- User input "Java records" parses to: main_topic="Java", subtopic="records"
+- Fuzzy matching: "Java record" matches questions with subtopic containing "record"
+- **Subtopic specified but not found**: Returns 0 questions, LLM generates new ones for that subtopic
+- **No subtopic specified**: Returns all questions for the main topic regardless of subtopic
+- This allows both broad ("Java") and specific ("Java records") queries
+
+**Parameters:**
+- `topic` (path variable, required) - Topic name, optionally with subtopic (e.g., "Java", "Java records", "React hooks")
+- `excludeQuestionIds` (query parameter, optional) - Comma-separated list of question IDs to exclude from the quiz
+
+**Response:** Returns a `QuizDTO` with up to 5 questions
+
+**Examples:**
+```bash
+GET /api/quiz/Java                      # All Java questions (any subtopic)
+GET /api/quiz/Java%20records            # Only Java "records" subtopic
+GET /api/quiz/Java%20streams            # Java "streams" subtopic (LLM generates if none exist)
+GET /api/quiz/React%20hooks             # Only React "hooks" subtopic
+GET /api/quiz/Java?excludeQuestionIds=1,2  # Java questions excluding 1 and 2
 ```
 
-### GET /api/quiz/:quizId
-Retrieve quiz details
+**Status Codes:**
+- `200 OK` - Quiz successfully retrieved
+- `400 Bad Request` - Topic not found in database
+- `500 Internal Server Error` - Unexpected error
 
-### POST /api/quiz/:quizId/submit
-Submit answers and get score
+## Database Schema
 
-### GET /api/topics
-Get list of supported root topics
+### topics
+- `id` BIGINT PRIMARY KEY AUTO_INCREMENT
+- `name` VARCHAR(100) UNIQUE NOT NULL
+- `category` VARCHAR(50) - 'backend', 'frontend', 'mobile'
+- `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
-## Database Schema (Planned)
+### questions
+- `id` BIGINT PRIMARY KEY AUTO_INCREMENT
+- `topic_id` BIGINT FOREIGN KEY REFERENCES topics(id)
+- `question_text` TEXT NOT NULL
+- `subtopic` VARCHAR(100) - Optional subtopic for filtering (e.g., "records", "hooks")
+- `difficulty` VARCHAR(20) NOT NULL - 'EASY', 'MEDIUM', 'HARD'
+- `explanation` TEXT NULL - Optional explanation
+- `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
-### questions table
-- id (primary key)
-- topic (indexed)
-- question_text
-- difficulty (easy/medium/hard)
-- created_at
-
-### question_options table
-- id (primary key)
-- question_id (foreign key)
-- option_text
-- is_correct
-- explanation (optional)
-
-### sessions table
-- id (primary key)
-- session_token
-- created_at
-- expires_at
-
-### session_questions table
-- session_id (foreign key)
-- question_id (foreign key)
-- shown_at
+### question_options
+- `id` BIGINT PRIMARY KEY AUTO_INCREMENT
+- `question_id` BIGINT FOREIGN KEY REFERENCES questions(id)
+- `option_text` TEXT NOT NULL
+- `is_correct` BOOLEAN NOT NULL - Exactly one true per question
+- Each question has 4-6 options
 
 ## Technology Integration
 
