@@ -36,7 +36,6 @@ class QuizControllerTest {
 
     @Test
     void getQuiz_shouldReturn200WithQuizData_whenTopicExists() throws Exception {
-        // Arrange
         List<OptionDTO> options = Arrays.asList(
                 new OptionDTO(1L, "Option A", true),
                 new OptionDTO(2L, "Option B", false)
@@ -51,7 +50,6 @@ class QuizControllerTest {
         
         when(quizService.getQuiz(eq("Java"), isNull())).thenReturn(quizDTO);
 
-        // Act & Assert
         mockMvc.perform(get("/api/quiz/Java")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -72,7 +70,6 @@ class QuizControllerTest {
 
     @Test
     void getQuiz_shouldReturn200WithExcludedQuestions_whenExcludeIdsProvided() throws Exception {
-        // Arrange
         List<OptionDTO> options = List.of(new OptionDTO(1L, "Option A", true));
         List<QuestionDTO> questions = List.of(
                 new QuestionDTO(3L, "Question 3?", "HARD", null, options)
@@ -81,7 +78,6 @@ class QuizControllerTest {
         
         when(quizService.getQuiz(eq("React"), eq(Arrays.asList(1L, 2L)))).thenReturn(quizDTO);
 
-        // Act & Assert
         mockMvc.perform(get("/api/quiz/React")
                         .param("excludeQuestionIds", "1", "2")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -95,11 +91,9 @@ class QuizControllerTest {
 
     @Test
     void getQuiz_shouldReturn200WithEmptyQuestions_whenNoQuestionsAvailable() throws Exception {
-        // Arrange
         QuizDTO quizDTO = new QuizDTO("Python", 0, List.of());
         when(quizService.getQuiz(eq("Python"), isNull())).thenReturn(quizDTO);
 
-        // Act & Assert
         mockMvc.perform(get("/api/quiz/Python")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -110,11 +104,9 @@ class QuizControllerTest {
 
     @Test
     void getQuiz_shouldReturn404_whenTopicNotFound() throws Exception {
-        // Arrange
         when(quizService.getQuiz(eq("NonExistent"), isNull()))
                 .thenThrow(new IllegalArgumentException("Topic not found: NonExistent"));
 
-        // Act & Assert
         mockMvc.perform(get("/api/quiz/NonExistent")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
@@ -124,7 +116,6 @@ class QuizControllerTest {
 
     @Test
     void getQuiz_shouldHandleTopicWithSpaces() throws Exception {
-        // Arrange
         List<OptionDTO> options = List.of(new OptionDTO(1L, "record", true));
         List<QuestionDTO> questions = List.of(
                 new QuestionDTO(1L, "What keyword?", "EASY", null, options)
@@ -133,38 +124,19 @@ class QuizControllerTest {
         
         when(quizService.getQuiz(eq("Java records"), isNull())).thenReturn(quizDTO);
 
-        // Act & Assert
-        mockMvc.perform(get("/api/quiz/Java records")
+        mockMvc.perform(get("/api/quiz/{topic}", "Java records")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.topic").value("Java records"));
-    }
 
-    @Test
-    void getQuiz_shouldHandleUrlEncodedTopic() throws Exception {
-        // Arrange
-        List<OptionDTO> options = List.of(new OptionDTO(1L, "useState", true));
-        List<QuestionDTO> questions = List.of(
-                new QuestionDTO(1L, "What is useState?", "EASY", null, options)
-        );
-        QuizDTO quizDTO = new QuizDTO("React hooks", 1, questions);
-        
-        when(quizService.getQuiz(eq("React hooks"), isNull())).thenReturn(quizDTO);
-
-        // Act & Assert
-        mockMvc.perform(get("/api/quiz/React%20hooks")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.topic").value("React hooks"));
+        verify(quizService).getQuiz("Java records", null);
     }
 
     @Test
     void getQuiz_shouldReturnCorrectCorsHeaders() throws Exception {
-        // Arrange
         QuizDTO quizDTO = new QuizDTO("Java", 0, List.of());
         when(quizService.getQuiz(any(), any())).thenReturn(quizDTO);
 
-        // Act & Assert
         mockMvc.perform(get("/api/quiz/Java")
                         .header("Origin", "http://localhost:5173")
                         .contentType(MediaType.APPLICATION_JSON))
