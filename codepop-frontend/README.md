@@ -8,6 +8,9 @@ React-based frontend for the CodePop AI-powered quiz application.
 - **React 19** - UI library
 - **React Router v7** - Client-side routing
 - **Axios** - HTTP client for REST API calls
+- **Vitest** - Unit testing framework
+- **React Testing Library** - Component testing utilities
+- **MSW (Mock Service Worker)** - API mocking for tests
 
 ## 🚀 Getting Started
 
@@ -35,12 +38,17 @@ The app will be available at `http://localhost:5173`
 npm run dev          # Start dev server with hot reload
 npm run build        # Build for production
 npm run preview      # Preview production build locally
+npm test             # Run tests in watch mode
+npm test -- --run    # Run tests once (CI mode)
+npm run test:ui      # Open Vitest UI (visual test runner)
+npm run test:coverage # Run tests with coverage report
 npm run lint         # Run ESLint (includes Prettier checks)
 npm run format:check # Check code formatting (Prettier)
 npm run format:fix   # Auto-fix code formatting
 ```
 
 **Code Style Enforcement:**
+
 - **Tools**: Prettier + ESLint integration
 - **Style**: Standard Prettier (semi-colons, single quotes, 80 char lines, trailing commas ES5)
 - **Runs automatically**: On pre-commit hooks
@@ -51,14 +59,32 @@ npm run format:fix   # Auto-fix code formatting
 ```
 codepop-frontend/
 ├── src/
-│   ├── components/    # Reusable UI components
-│   ├── pages/         # Route-level page components
-│   ├── services/      # API service layer (axios)
-│   ├── utils/         # Helper functions
-│   ├── App.jsx        # Main app component with routing
-│   └── main.jsx       # Application entry point
-├── public/            # Static assets
-└── vite.config.js     # Vite configuration (includes proxy to backend)
+│   ├── components/      # Reusable UI components
+│   │   ├── Question.jsx
+│   │   ├── QuestionOption.jsx
+│   │   ├── ProgressIndicator.jsx
+│   │   └── ScoreBreakdown.jsx
+│   ├── pages/           # Route-level page components
+│   │   ├── HomePage.jsx
+│   │   └── QuizPage.jsx
+│   ├── services/        # API service layer (axios)
+│   │   └── api.js
+│   ├── __tests__/       # Unit tests
+│   │   ├── HomePage.test.jsx
+│   │   ├── QuizPage.test.jsx
+│   │   ├── Question.test.jsx
+│   │   ├── ProgressIndicator.test.jsx
+│   │   └── ScoreBreakdown.test.jsx
+│   ├── test/            # Test configuration
+│   │   ├── setup.js
+│   │   └── mocks/
+│   │       ├── handlers.js  # MSW request handlers
+│   │       └── server.js    # MSW server setup
+│   ├── App.jsx          # Main app component with routing
+│   └── main.jsx         # Application entry point
+├── public/              # Static assets
+├── vite.config.js       # Vite configuration (includes proxy to backend)
+└── vitest.config.js     # Vitest test configuration
 ```
 
 ## 🔌 API Integration
@@ -90,12 +116,62 @@ server: {
 
 This allows frontend code to call `/api/quiz/java` which forwards to `http://localhost:8080/api/quiz/java`.
 
+## 🧪 Testing
+
+The project uses **Vitest** with **React Testing Library** for comprehensive unit testing.
+
+### Test Coverage
+
+- **35 tests** across 5 test suites
+- **100% component coverage** - all pages and components tested
+- **MSW integration** - realistic API mocking at network level
+
+### Running Tests
+
+```bash
+# Watch mode (re-runs on file changes)
+npm test
+
+# Run once (CI mode)
+npm test -- --run
+
+# Visual UI mode
+npm run test:ui
+
+# With coverage report
+npm run test:coverage
+```
+
+### Test Structure
+
+Tests use MSW (Mock Service Worker) to mock backend API calls:
+
+- **src/test/mocks/handlers.js** - Defines mock API responses
+- **src/test/mocks/server.js** - Configures MSW server
+- **src/test/setup.js** - Test environment setup
+
+Example test output:
+
+```
+✓ src/__tests__/HomePage.test.jsx (6 tests)
+✓ src/__tests__/QuizPage.test.jsx (9 tests)
+✓ src/__tests__/Question.test.jsx (7 tests)
+✓ src/__tests__/ProgressIndicator.test.jsx (4 tests)
+✓ src/__tests__/ScoreBreakdown.test.jsx (9 tests)
+
+Test Files  5 passed (5)
+Tests  35 passed (35)
+```
+
 ## 🚧 Development Status
 
 **Phase 1**: Project setup ✅  
-**Phase 2**: Core components & routing (in progress)  
-**Phase 3**: API integration (planned)  
-**Phase 4**: UI polish (planned)
+**Phase 2**: Core components & routing ✅  
+**Phase 3**: API integration ✅  
+**Phase 4**: UI polish ✅  
+**Phase 5**: Unit testing ✅
+
+**Status**: MVP Complete - Full quiz flow with comprehensive test coverage
 
 ## 📝 License
 

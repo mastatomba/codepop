@@ -22,7 +22,12 @@ At the end the user will get a score.
 - **Explanations**: LLM decides per question; one global explanation per question (not per answer option).
 - **Error handling**: If LLM fails but local questions exist, show partial quiz with toast notification. If complete failure, show toast message to try again later.
 - **Backend**: Spring Boot (Java).
-- **Frontend**: React, communicating with Spring Boot backend via REST APIs.
+- **Frontend**: React, communicating with Spring Boot backend via REST APIs. Fully implemented with:
+  - Homepage with topic input
+  - Quiz page with linear progression and immediate feedback
+  - Score breakdown with detailed review
+  - Responsive design and accessibility features
+  - 35 unit tests using Vitest + React Testing Library + MSW
 - **Project structure**: Monorepo with two main folders:
   - `codepop-backend/` - Spring Boot application
   - `frontend/` - React application
@@ -81,3 +86,29 @@ Agent responsibilities:
   ]
 }
 ```
+
+## Testing
+
+### Backend
+- **Framework**: JUnit 5 + Mockito + Spring Boot Test
+- **Coverage**: 29 tests (10 unit tests for service layer, 6 unit tests for controllers, 13 integration tests)
+- **Test Types**:
+  - Unit tests: `QuizServiceTest`, `QuizControllerTest`
+  - Integration tests: `QuizControllerIntegrationTest` (end-to-end API tests)
+- **Run**: `./mvnw test`
+
+### Frontend
+- **Framework**: Vitest + React Testing Library
+- **Mocking**: MSW (Mock Service Worker) for API mocking at network level
+- **Coverage**: 35 tests across 5 test suites
+  - HomePage (6 tests): Form validation, navigation
+  - QuizPage (9 tests): Loading, error handling, complete quiz flow
+  - Question (7 tests): Rendering, feedback display
+  - ProgressIndicator (4 tests): Progress calculation
+  - ScoreBreakdown (9 tests): Score calculation, review display
+- **Run**: `npm test` (watch mode) or `npm test -- --run` (CI mode)
+- **UI**: `npm run test:ui` for visual test runner
+
+### Testing Philosophy
+- **Backend**: High coverage of business logic with fast unit tests and comprehensive integration tests for API contracts
+- **Frontend**: Component-level tests with realistic API mocking to ensure user flows work end-to-end without hitting real backend

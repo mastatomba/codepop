@@ -28,6 +28,8 @@ CodePop generates interactive multiple-choice quizzes on coding topics using AI.
 - Vite (build tool)
 - React Router v7
 - Axios (REST API client)
+- Vitest + React Testing Library (testing)
+- MSW (API mocking)
 
 ## 🎯 Supported Topics
 
@@ -118,12 +120,15 @@ This project enforces consistent code style using automated tools:
 ### Frontend (React)
 - **Tools**: Prettier + ESLint
 - **Style**: Standard Prettier (semi-colons, single quotes, 80 char lines)
+- **Testing**: Vitest + React Testing Library + MSW
 - **Commands**:
   ```bash
   cd codepop-frontend
   npm run format:check   # Check formatting
   npm run format:fix     # Auto-fix formatting
   npm run lint           # Check linting + formatting
+  npm test               # Run tests
+  npm run test:coverage  # Run tests with coverage
   ```
 
 ### Pre-commit Hooks
@@ -138,9 +143,25 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🚧 Status
 
-**Current:** Frontend development in progress (Phase 2 - Routing & Components)  
-**Completed:** Backend MVP, Frontend project setup  
-**Next:** API integration, UI polish
+**Backend:** ✅ MVP Complete
+- REST API with quiz generation
+- Topic validation and caching
+- 29 unit & integration tests
+- SQLite database with seeded data
+
+**Frontend:** ✅ MVP Complete
+- Full quiz flow (homepage → quiz → results)
+- Immediate feedback on answers
+- Progress tracking
+- Score breakdown with review
+- 35 unit tests with MSW
+- Responsive design
+
+**Next Steps:**
+- LLM integration (currently stubbed)
+- Session tracking across multiple quizzes
+- Quiz history and statistics
+- Topic autocomplete/suggestions
 
 ---
 
