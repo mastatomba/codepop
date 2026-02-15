@@ -34,3 +34,4 @@ build/
 
 ### Sqlite database file ###
 codepop.db
+test-codepop.db
