@@ -27,6 +27,7 @@
 - Topic input and validation display
 - Question presentation with multiple-choice options
 - Answer tracking and score calculation
+- Session tracking via browser sessionStorage (asked questions per topic)
 - Toast notifications for errors
 - Client-side routing (React Router v7)
 - REST API calls via Axios
@@ -36,17 +37,17 @@
 - REST API endpoints for quiz operations
 - Topic validation against database-stored topics
 - Question cache management in SQLite
+- Question filtering via `excludeQuestionIds` query parameter (frontend-managed)
 - LLM integration via QuizMaster interface (OllamaQuizMaster implementation)
 - Response parsing with markdown support
 - Transaction isolation for long-running LLM calls
 - Test database separation for fast, predictable tests
-- Session tracking (frontend-managed via excludeQuestionIds)
 - Error handling and recovery
 
 ### Database (SQLite)
 - Store generated questions by topic
 - Question metadata (difficulty, explanations)
-- Session data (questions shown per session)
+- No session data stored (handled by frontend sessionStorage)
 - Simple schema with minimal tables
 
 ### LLM (Ollama / Cloud API)
@@ -62,40 +63,60 @@
 
 1. **User Input**
    - User enters topic: "Quiz me about Java Spring Boot"
-   - Frontend validates format and sends to backend
+   - Frontend validates format
 
-2. **Topic Validation**
-   - Backend checks against hardcoded root topics list
+2. **Session Check**
+   - Frontend loads previously asked question IDs from browser sessionStorage
+   - Key: `codepop_asked_questions`, format: `{ "Java Spring Boot": [1, 2, 3, ...] }`
+
+3. **API Request**
+   - Frontend sends request with excludeQuestionIds: `/api/quiz/Java%20Spring%20Boot?excludeQuestionIds=1,2,3`
+
+4. **Topic Validation**
+   - Backend checks against database-stored topics
    - Accepts if contains valid root (e.g., "Java")
    - Rejects if no valid root found
 
-3. **Question Retrieval**
+5. **Question Retrieval**
    - Backend parses user input to extract main topic and optional subtopic
    - Uses fuzzy matching to find questions (e.g., "Java record" matches subtopic "records")
    - **If subtopic specified**: Only returns questions matching that subtopic (may be 0)
    - **If no subtopic specified**: Returns all questions for main topic
-   - Filters out questions already shown in current session
+   - Filters out `excludeQuestionIds` from request parameter
    - If 5+ questions available, randomizes and selects 5
 
-4. **LLM Generation** (if needed)
+6. **LLM Generation** (if needed)
    - If fewer than 5 questions available (including when subtopic has no questions), calls QuizMaster
    - Uses OllamaQuizMaster with qwen2.5-coder:7b model (temperature 0.8 for creativity)
-   - Backend provides existing question texts to avoid duplicates
+   - **Duplicate Prevention Strategy:**
+     - Backend extracts question texts from ALL questions in database (not just available ones)
+     - Passes complete list to LLM (no limit on number of questions shown)
+     - Prompt includes: "Avoid generating questions similar to these N existing ones: [list]"
+     - Prompt explicitly instructs: "Generate questions on DIFFERENT aspects of [topic] that are NOT covered above"
    - LLM prompt encourages markdown code blocks for better readability
    - LLM returns JSON with questions, options, correct_index, difficulty, explanations
    - Response parsing handles both wrapped JSON and raw JSON formats
    - **Transaction isolation:** LLM call happens OUTSIDE any database transaction (can take 5-10 seconds)
    - Backend validates and stores in SQLite with appropriate subtopic (short write transaction < 100ms)
 
-5. **Quiz Assembly**
+7. **Quiz Assembly**
    - Backend selects up to 5 questions (randomized if > 5 available)
-   - Returns quiz JSON to frontend
+   - Returns quiz JSON to frontend with question IDs
 
-6. **User Interaction**
+8. **Session Update**
+   - Frontend saves question IDs to sessionStorage: `{ "Java Spring Boot": [1, 2, 3, 4, 5, 6, 7, ...] }`
+   - Persists across page reloads, cleared when browser tab/window closes
+
+9. **User Interaction**
    - Frontend displays questions one by one
    - User selects answers
    - Frontend calculates score
    - Frontend displays results with explanations
+
+10. **Retake Same Topic**
+    - Frontend loads excludeQuestionIds [1-7] from sessionStorage
+    - Backend filters those out, sees < 5 available → calls LLM for new questions
+    - User gets different questions
 
 ## API Endpoints
 
@@ -170,9 +191,17 @@ GET /api/quiz/Java?excludeQuestionIds=1,2  # Java questions excluding 1 and 2
 
 ### Axios HTTP Client
 - REST API communication with backend
-- Centralized API service layer
+- Centralized API service layer (`src/services/api.js`)
+- `quizApi.getQuiz(topic, excludeQuestionIds)` handles query parameter serialization
 - Request/response interceptors
 - Error handling
+
+### Browser Session Storage
+- Native browser API for session-scoped data storage
+- Data persists across page reloads (unlike React state)
+- Automatically cleared when tab/window closes (unlike localStorage)
+- Utility module: `src/utils/sessionStorage.js`
+- Stores asked question IDs per topic for exclusion on retake
 
 ### Spring AI - Ollama
 - Auto-configuration for Ollama ChatClient

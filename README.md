@@ -102,12 +102,17 @@ codepop/
 ## 🎨 How It Works
 
 1. User enters a coding topic
-2. Backend validates topic against supported list
-3. Backend checks SQLite for existing questions
-4. If needed, LLM generates new questions with explanations
-5. Questions stored in database for future use
-6. User answers 5 multiple-choice questions
-7. Score displayed at the end
+2. Frontend loads previously asked questions from browser session storage
+3. Backend validates topic against supported list
+4. Backend checks SQLite for existing questions (excluding already-asked ones)
+5. If < 5 questions available, LLM generates new questions with explanations
+   - Backend passes ALL existing question texts to LLM to avoid duplicates
+   - LLM sees complete history and generates questions on different aspects
+6. New questions stored in database for future use
+7. Frontend saves question IDs to session storage
+8. User answers 5 multiple-choice questions
+9. Score displayed at the end
+10. Taking the same topic again shows different questions (within same session)
 
 ## 🎯 Code Style
 

@@ -14,11 +14,22 @@ export const quizApi = {
         excludeQuestionIds.length > 0
           ? { excludeQuestionIds: excludeQuestionIds.join(',') }
           : {};
+
+      console.log(
+        `[API] GET /api/quiz/${topic} with params:`,
+        params,
+        'excludeQuestionIds:',
+        excludeQuestionIds
+      );
+
       const response = await api.get(`/quiz/${encodeURIComponent(topic)}`, {
         params,
       });
+
+      console.log('[API] Response received:', response.data);
       return response.data;
     } catch (error) {
+      console.error('[API] Error:', error);
       if (error.response?.status === 404) {
         throw new Error(
           `Topic not found: "${topic}". Please try a different topic.`

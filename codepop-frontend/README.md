@@ -69,6 +69,8 @@ codepop-frontend/
 │   │   └── QuizPage.jsx
 │   ├── services/        # API service layer (axios)
 │   │   └── api.js
+│   ├── utils/           # Utility modules
+│   │   └── sessionStorage.js  # Session tracking for asked questions
 │   ├── __tests__/       # Unit tests
 │   │   ├── HomePage.test.jsx
 │   │   ├── QuizPage.test.jsx
@@ -92,9 +94,27 @@ codepop-frontend/
 The frontend communicates with the Spring Boot backend via REST API:
 
 - **Base URL**: `/api` (proxied to `http://localhost:8080/api` in development)
-- **Primary Endpoint**: `GET /api/quiz/{topic}` - Fetch quiz questions
+- **Primary Endpoint**: `GET /api/quiz/{topic}?excludeQuestionIds=1,2,3` - Fetch quiz questions
 
 API calls are centralized in `src/services/api.js` using Axios.
+
+### Session Tracking
+
+The app tracks which questions have been asked per topic using **browser sessionStorage**:
+
+- **Utility Module**: `src/utils/sessionStorage.js`
+- **Storage Key**: `codepop_asked_questions`
+- **Format**: `{ "Java": [1, 2, 3], "React hooks": [4, 5, 6] }`
+- **Behavior**:
+  - Persists across page reloads (unlike React state)
+  - Cleared when browser tab/window closes (unlike localStorage)
+  - When retaking same topic, previously asked questions are excluded
+  - Backend generates new questions if < 5 available after exclusion
+
+**Functions:**
+
+- `getAskedQuestions(topic)` - Retrieve asked question IDs for a topic
+- `addAskedQuestions(topic, ids)` - Save question IDs after quiz fetch
 
 ## ⚙️ Configuration
 

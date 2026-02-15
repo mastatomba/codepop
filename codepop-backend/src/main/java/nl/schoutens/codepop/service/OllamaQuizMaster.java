@@ -84,11 +84,18 @@ public class OllamaQuizMaster implements QuizMaster {
         "- When including code, use proper JSON string escaping (escape quotes and special characters)\n\n");
 
     if (existingQuestionTexts != null && !existingQuestionTexts.isEmpty()) {
-      prompt.append("IMPORTANT: Avoid generating questions similar to these existing ones:\n");
-      for (int i = 0; i < Math.min(existingQuestionTexts.size(), 10); i++) {
-        prompt.append("- ").append(existingQuestionTexts.get(i)).append("\n");
+      prompt.append(
+          "IMPORTANT: Avoid generating questions similar to these "
+              + existingQuestionTexts.size()
+              + " existing ones:\n");
+      // Show all existing questions (no limit) so LLM doesn't create duplicates
+      for (String existingText : existingQuestionTexts) {
+        prompt.append("- ").append(existingText).append("\n");
       }
-      prompt.append("\n");
+      prompt.append(
+          "\nGenerate questions on DIFFERENT aspects of "
+              + topic
+              + " that are NOT covered above.\n\n");
     }
 
     prompt.append(

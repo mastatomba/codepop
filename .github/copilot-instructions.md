@@ -34,6 +34,15 @@ npm run dev
 # Build
 npm run build
 
+# Run all tests
+npm test
+
+# Run tests with UI
+npm run test:ui
+
+# Run tests with coverage
+npm run test:coverage
+
 # Lint and formatting
 npm run lint           # ESLint + Prettier checks
 npm run format:check   # Check formatting only
@@ -67,22 +76,28 @@ npm run preview
 ## Architecture Overview
 
 ### Request Flow
-1. **Frontend** → sends quiz request for topic (e.g., "Java records")
-2. **Backend** → validates topic exists in database (case-insensitive)
-3. **Backend** → checks SQLite for existing questions:
+1. **Frontend** → loads previously asked question IDs from browser session storage
+2. **Frontend** → sends quiz request for topic with `excludeQuestionIds` (e.g., "Java records?excludeQuestionIds=1,2,3")
+3. **Backend** → validates topic exists in database (case-insensitive)
+4. **Backend** → checks SQLite for existing questions:
    - If subtopic specified (e.g., "records"): filters to that subtopic using fuzzy LIKE matching
    - If no subtopic: returns all questions for main topic
-   - Filters out `excludeQuestionIds` (session tracking)
-4. **Backend** → calls LLM if < 5 questions available (QuizMaster interface)
-5. **Backend** → stores new questions with subtopic in SQLite
-6. **Backend** → randomizes (if > 5 available) and returns up to 5 questions
-7. **Frontend** → displays quiz, tracks answers, calculates score
+   - Filters out `excludeQuestionIds` (from session storage)
+5. **Backend** → calls LLM if < 5 questions available (QuizMaster interface)
+   - Passes **ALL** existing question texts (including excluded ones) to LLM
+   - LLM sees complete history to avoid generating duplicates
+   - Prompt instructs: "Generate questions on DIFFERENT aspects"
+6. **Backend** → stores new questions with subtopic in SQLite
+7. **Backend** → randomizes (if > 5 available) and returns up to 5 questions
+8. **Frontend** → displays quiz, tracks answers, calculates score
+9. **Frontend** → saves question IDs to session storage for future exclusion
 
 ### Component Responsibilities
-- **Frontend**: UI, session tracking (excludeQuestionIds), score calculation
+- **Frontend**: UI, session tracking (browser sessionStorage for excludeQuestionIds), score calculation
 - **Backend**: API mediation, topic/subtopic validation, LLM orchestration, caching
 - **SQLite**: Question storage with main topics + subtopics
-- **LLM (Ollama)**: Question generation via QuizMaster interface (stub implementation)
+- **LLM (Ollama)**: Question generation via QuizMaster interface (OllamaQuizMaster with qwen2.5-coder:7b)
+- **Browser Session Storage**: Tracks asked question IDs per topic, cleared on tab/window close
 
 ### Topic/Subtopic Architecture
 - **19 main topics** stored in `topics` table: Java, Python, React, JavaScript, etc.
@@ -133,9 +148,11 @@ public class Topic {
 
 **QuizMaster Interface**
 - LLM integration via `QuizMaster` interface (not direct implementation)
-- Current: `OllamaQuizMaster` stub (returns empty list)
+- Current: `OllamaQuizMaster` using Spring AI ChatClient with `qwen2.5-coder:7b` model
 - Interface contract: `generateQuestions(topic, count, existingQuestionTexts)`
-- Receives existing question texts to avoid duplicates
+- Receives **ALL** existing question texts (no limit) to avoid duplicates
+- Prompt explicitly instructs: "Generate questions on DIFFERENT aspects not covered above"
+- Temperature 0.8 balances creativity with accuracy
 
 **Repository Pattern**
 - Use Spring Data JPA repositories for data access
@@ -147,6 +164,14 @@ public class Topic {
 - 19 main topics (Backend: Java, Python, etc.; Frontend: React, Vue, etc.; Mobile: Swift, Kotlin, etc.)
 - 6 sample questions (3 Java records, 3 React with different subtopics)
 
+**TransactionalOperations Pattern**
+- Long-running LLM calls (5-10 seconds) separated from database transactions
+- Static inner `@Component` class `TransactionalOperations` handles all `@Transactional` methods
+- Service orchestration methods (e.g., `getQuiz()`) have NO `@Transactional` annotation
+- Transaction boundaries: read topic → read questions → **LLM generation (no tx)** → save questions → re-fetch
+- Prevents SQLite "Unable to commit" errors from holding locks during LLM calls
+- Spring creates separate proxy beans for service and inner class, allowing proper transaction interception
+
 ### Frontend (React/Vite)
 
 **API Service Layer**
@@ -154,9 +179,13 @@ public class Topic {
 - Vite proxy forwards `/api/*` to `http://localhost:8080/api/*` in development
 
 **Session Tracking**
-- Frontend tracks `excludeQuestionIds` (shown questions)
-- Passes to backend via query parameter: `/api/quiz/{topic}?excludeQuestionIds=1,2,3`
-- Backend filters out excluded questions before randomization
+- Implemented using browser `sessionStorage` API (persists across page reloads, cleared on tab close)
+- Utility: `src/utils/sessionStorage.js` with functions: `getAskedQuestions()`, `addAskedQuestions()`
+- Storage key: `codepop_asked_questions` with format: `{ "topic": [questionId1, questionId2, ...] }`
+- QuizPage loads asked IDs before fetching, passes to backend: `/api/quiz/{topic}?excludeQuestionIds=1,2,3`
+- Backend filters out excluded questions before selection/randomization
+- QuizPage saves new question IDs to session storage after receiving quiz
+- Users see different questions when retaking same topic within session
 
 **React Router v7**
 - Routes: `/` (home), `/quiz/:topic` (quiz page), `/results` (results)
@@ -280,14 +309,19 @@ codepop/
 - Ollama: `http://localhost:11434` (if using local LLM)
 
 **Current Status:**
-- ✅ Backend MVP complete (API, validation, caching, tests)
-- ✅ Frontend project setup complete
-- 🚧 Frontend components and routing in progress
-- ⏳ API integration pending
-- ⏳ OllamaQuizMaster implementation pending
+- ✅ Backend complete (API, validation, caching, OllamaQuizMaster with qwen2.5-coder:7b)
+- ✅ Frontend complete (full quiz flow, markdown rendering, responsive design)
+- ✅ 64 total tests (29 backend + 35 frontend) - all passing
+- ✅ Transaction isolation pattern for long-running LLM calls
+- ✅ Test database isolation (separate test-codepop.db)
+- ✅ Pre-commit hooks with Spotless (backend) and Prettier/ESLint (frontend)
 
 **Test Coverage:**
-- 29 total `@Test` annotations across unit and integration tests
-- `QuizServiceTest`: 10 unit tests (service layer logic)
-- `QuizControllerTest`: 6 unit tests (controller layer)
-- `QuizControllerIntegrationTest`: 12 integration tests (end-to-end API)
+- **Backend**: 29 tests across 4 test files (JUnit 5 + Mockito + Spring Boot Test)
+  - `QuizServiceTest`: 10 unit tests (service layer logic)
+  - `QuizControllerTest`: 6 unit tests (controller layer)
+  - `QuizControllerIntegrationTest`: 12 integration tests (end-to-end API)
+  - All tests use stub QuizMaster for fast execution (~2 seconds total)
+- **Frontend**: 35 tests across 5 test files (Vitest + React Testing Library + MSW)
+  - Component tests for HomePage, QuizPage, Question, ProgressIndicator, ScoreBreakdown
+  - MSW for realistic API mocking at network level

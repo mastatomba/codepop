@@ -69,14 +69,33 @@ This document outlines key architectural and design decisions made for CodePop.
 - Temperature: 0.8 (higher creativity for quiz generation vs 0.3 default)
 - Prompt includes markdown code block examples to encourage formatted questions
 - Response parsing handles both wrapped JSON and raw JSON with fuzzy boundary detection
-- LLM receives existing question texts to avoid duplicates
 - Questions support markdown formatting in frontend (ReactMarkdown)
+
+**Duplicate Prevention Strategy:**
+- Backend passes **ALL** existing question texts to LLM (no limit)
+- Previously had 10-question limit which caused duplicates when > 10 questions existed
+- Removed limit so LLM sees complete history
+- Prompt explicitly instructs: "Generate questions on DIFFERENT aspects of [topic] that are NOT covered above"
+- With temperature 0.8, provides enough creativity for varied questions
+- Note: LLM may occasionally generate similar questions for narrow topics with limited question space
 
 ### Question Generation: Training Data Only
 **Decision:** LLM generates questions from training knowledge, no web search  
 **Rationale:** Simpler implementation for POC. Training data sufficient for coding topics. Can add web search in future if needed.
 
-**Implementation:** QuizMaster interface receives list of existing question texts to avoid duplicates. LLM prompt includes: "Generate N new questions about X, different from: [existing questions]".
+**Implementation:** 
+- QuizMaster interface receives list of **ALL** existing question texts (no limit)
+- Previously limited to 10 questions, causing duplicates when database grew
+- Fixed by removing limit: LLM now sees complete question history
+- Prompt instructs: "Avoid generating questions similar to these N existing ones"
+- Prompt adds: "Generate questions on DIFFERENT aspects of [topic] that are NOT covered above"
+
+**Duplicate Prevention:**
+1. Backend extracts ALL question texts from database for the topic (including user's excluded questions)
+2. Passes complete list to `QuizMaster.generateQuestions()`
+3. OllamaQuizMaster includes all questions in prompt with explicit instruction to avoid similarity
+4. Temperature 0.8 provides enough creativity to generate varied questions
+5. For narrow topics (e.g., "Java operators"), may still occasionally see similar questions due to limited question space
 
 ## Features
 
@@ -114,14 +133,29 @@ This document outlines key architectural and design decisions made for CodePop.
 **Decision:** Each question can have an optional explanation (nullable field)  
 **Rationale:** Flexibility for questions that need context vs those that are self-explanatory. Stored in database, not per-option.
 
-### Session Tracking: Frontend-Managed
-**Decision:** Frontend tracks excludeQuestionIds, passes to backend via query parameter  
-**Backend:** Filters out excluded questions before selection/randomization  
+### Session Tracking: Browser sessionStorage
+**Decision:** Use browser `sessionStorage` API to track asked questions per topic  
+**Implementation:**
+- Utility module: `src/utils/sessionStorage.js`
+- Storage key: `codepop_asked_questions`
+- Data format: `{ "topic": [questionId1, questionId2, ...] }`
+- Functions: `getAskedQuestions(topic)`, `addAskedQuestions(topic, ids)`
+- QuizPage loads IDs before API call, saves IDs after receiving quiz
+- Passed to backend via query parameter: `?excludeQuestionIds=1,2,3`
+
 **Rationale:**
-- Stateless backend (no session storage needed for POC)
+- Persists across page reloads (user can navigate away and return)
+- Automatically cleared when browser tab/window closes (fresh session each time)
+- Stateless backend (no session storage on server)
 - Frontend has full control over user session
-- Simple to implement
-- Can migrate to backend session storage later if needed
+- No database storage needed for session data
+- Users see different questions when retaking same topic within session
+- Can migrate to backend session storage or user accounts later if needed
+
+**Alternative Considered:**
+- **In-memory React state**: Cleared on page reload (poor UX)
+- **localStorage**: Persists indefinitely (would require manual cleanup UI)
+- **Backend session storage**: Adds complexity, requires session management
 
 ## Error Handling
 

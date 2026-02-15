@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import nl.schoutens.codepop.dto.OptionDTO;
 import nl.schoutens.codepop.dto.QuestionDTO;
 import nl.schoutens.codepop.dto.QuizDTO;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Slf4j
 public class QuizService {
 
   private final TopicRepository topicRepository;
@@ -75,6 +77,12 @@ public class QuizService {
   }
 
   public QuizDTO getQuiz(String userInput, List<Long> excludeQuestionIds) {
+    log.info(
+        "[QuizService] getQuiz called with topic: "
+            + userInput
+            + ", excludeQuestionIds: "
+            + excludeQuestionIds);
+
     // Parse user input and find topic (short read transaction)
     ParsedTopicResult parsed = parseAndFindTopic(userInput);
     if (parsed.topic == null) {
@@ -83,18 +91,26 @@ public class QuizService {
 
     // 1. Fetch existing questions (short read transaction)
     List<Question> allQuestions = txOps.fetchQuestions(parsed.topic.getId(), parsed.subtopic);
+    log.info("[QuizService] Found " + allQuestions.size() + " total questions");
 
     // 2. Filter out excluded questions (user already saw these)
     List<Question> availableQuestions =
         allQuestions.stream()
             .filter(q -> excludeQuestionIds == null || !excludeQuestionIds.contains(q.getId()))
             .collect(Collectors.toList());
+    log.info(
+        "[QuizService] After filtering: " + availableQuestions.size() + " available questions");
 
     // 3. Check if we need more questions
     if (availableQuestions.size() < 5) {
-      // Extract existing question texts for LLM
+      // Extract ALL question texts (including excluded ones) so LLM doesn't duplicate
       List<String> existingQuestionTexts =
           allQuestions.stream().map(Question::getQuestionText).collect(Collectors.toList());
+
+      log.info(
+          "[QuizService] Passing "
+              + existingQuestionTexts.size()
+              + " existing question texts to LLM to avoid duplicates");
 
       int neededCount = 5 - availableQuestions.size();
 

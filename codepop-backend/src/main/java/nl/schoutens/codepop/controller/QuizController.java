@@ -2,6 +2,7 @@ package nl.schoutens.codepop.controller;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import nl.schoutens.codepop.dto.QuizDTO;
 import nl.schoutens.codepop.service.QuizService;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/quiz")
 @RequiredArgsConstructor
+@Slf4j
 public class QuizController {
 
   private final QuizService quizService;
@@ -17,6 +19,12 @@ public class QuizController {
   @GetMapping("/{topic}")
   public ResponseEntity<QuizDTO> getQuiz(
       @PathVariable String topic, @RequestParam(required = false) List<Long> excludeQuestionIds) {
+
+    log.info(
+        "[QuizController] GET /api/quiz/"
+            + topic
+            + " with excludeQuestionIds: "
+            + excludeQuestionIds);
 
     QuizDTO quiz = quizService.getQuiz(topic, excludeQuestionIds);
     return ResponseEntity.ok(quiz);

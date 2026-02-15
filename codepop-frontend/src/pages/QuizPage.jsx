@@ -4,6 +4,7 @@ import { quizApi } from '../services/api';
 import Question from '../components/Question';
 import ProgressIndicator from '../components/ProgressIndicator';
 import ScoreBreakdown from '../components/ScoreBreakdown';
+import { getAskedQuestions, addAskedQuestions } from '../utils/sessionStorage';
 
 function QuizPage() {
   const { topic } = useParams();
@@ -24,8 +25,29 @@ function QuizPage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await quizApi.getQuiz(topic);
+
+        // Get previously asked questions for this topic from session storage
+        const excludeQuestionIds = getAskedQuestions(topic);
+        console.log(
+          `[QuizPage] Topic: "${topic}", Excluded IDs:`,
+          excludeQuestionIds
+        );
+
+        // Fetch quiz, excluding already-asked questions
+        const data = await quizApi.getQuiz(topic, excludeQuestionIds);
+        console.log('[QuizPage] Quiz data received:', data);
         setQuizData(data);
+
+        // Save the question IDs to session storage
+        if (data.questions && data.questions.length > 0) {
+          const questionIds = data.questions.map((q) => q.id);
+          console.log('[QuizPage] Saving question IDs:', questionIds);
+          addAskedQuestions(topic, questionIds);
+
+          // Verify it was saved
+          const saved = getAskedQuestions(topic);
+          console.log('[QuizPage] Verified saved IDs:', saved);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
