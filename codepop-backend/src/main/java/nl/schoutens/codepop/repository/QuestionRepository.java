@@ -10,10 +10,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, Long> {
 
-  List<Question> findByTopicId(Long topicId);
+  @Query("SELECT q FROM Question q LEFT JOIN FETCH q.options WHERE q.topic.id = :topicId")
+  List<Question> findByTopicId(@Param("topicId") Long topicId);
 
   @Query(
-      "SELECT q FROM Question q WHERE q.topic.id = :topicId AND LOWER(q.subtopic) LIKE LOWER(CONCAT('%', :subtopic, '%'))")
+      "SELECT q FROM Question q LEFT JOIN FETCH q.options WHERE q.topic.id = :topicId AND LOWER(q.subtopic) LIKE LOWER(CONCAT('%', :subtopic, '%'))")
   List<Question> findByTopicIdAndSubtopicContainingIgnoreCase(
       @Param("topicId") Long topicId, @Param("subtopic") String subtopic);
 }

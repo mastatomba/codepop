@@ -16,31 +16,39 @@ CodePop has comprehensive test coverage for both backend and frontend:
 - **JUnit 5**: Modern Java testing framework
 - **Mockito**: Mocking framework for unit tests
 - **Spring Boot Test**: Integration testing support
-- **H2**: In-memory database for integration tests
+- **SQLite**: Separate test database (test-codepop.db) for integration tests
+- **@TestConfiguration**: Stub QuizMaster for predictable test results
 
 ### Test Structure
 
 ```
 codepop-backend/src/test/java/
-├── QuizServiceTest.java              # 10 unit tests
-├── QuizControllerTest.java           # 6 unit tests
-└── QuizControllerIntegrationTest.java # 13 integration tests
+├── QuizServiceTest.java              # 10 unit tests (mocks TransactionalOperations)
+├── QuizControllerTest.java           # 6 unit tests (mocks QuizService)
+└── QuizControllerIntegrationTest.java # 12 integration tests (separate test DB)
+
+codepop-backend/src/test/resources/
+└── application-test.properties        # Test database configuration
 ```
 
 ### Test Types
 
 **Unit Tests** (`QuizServiceTest`, `QuizControllerTest`)
 - Test individual components in isolation
-- Mock dependencies (repositories, QuizMaster)
-- Fast execution (~1-2 seconds)
+- Mock dependencies (repositories, QuizMaster, TransactionalOperations)
+- Fast execution (~200ms total for 16 unit tests)
 - Focus on business logic validation
+- `QuizServiceTest` mocks `TransactionalOperations` to test service orchestration
 
 **Integration Tests** (`QuizControllerIntegrationTest`)
 - Test complete API endpoints end-to-end
-- Use real database (H2 in-memory)
+- Use separate SQLite database (test-codepop.db) with `@ActiveProfiles("test")`
+- Stub `QuizMaster` via `@TestConfiguration` (returns empty list)
+- Seed known test data in `@BeforeEach` for predictable results
 - Test HTTP request/response cycle
 - Validate JSON serialization
 - Focus on API contracts
+- Fast execution (~1.8 seconds for 12 tests) - no LLM calls
 
 ### Running Backend Tests
 
@@ -68,7 +76,41 @@ cd codepop-backend
 - ✅ Question exclusion (excludeQuestionIds parameter)
 - ✅ Error handling (topic not found, empty results)
 - ✅ API contracts (HTTP status codes, JSON structure)
-- ✅ QuizMaster integration (stub implementation)
+- ✅ QuizMaster integration (stub implementation in tests, real OllamaQuizMaster in production)
+- ✅ Transaction isolation (TransactionalOperations pattern)
+- ✅ Test database isolation (separate test-codepop.db)
+- ✅ JOIN FETCH for eager loading (no N+1 queries)
+
+### Test Isolation Strategy
+
+**Problem:** LLM calls are slow (5-10 seconds) and unpredictable for tests
+
+**Solution:** Separate test environment with stub QuizMaster
+```java
+// Integration test configuration
+@ActiveProfiles("test")
+@TestConfiguration
+static class TestConfig {
+  @Bean
+  @Primary
+  public QuizMaster testQuizMaster() {
+    return (topic, count, existing) -> Collections.emptyList();
+  }
+}
+
+// Production service excluded from tests
+@Service
+@Primary
+@Profile("!test")
+public class OllamaQuizMaster implements QuizMaster { ... }
+```
+
+**Benefits:**
+- Tests run fast (~2 seconds for all 29 tests)
+- Predictable results (no AI variability)
+- No Ollama dependency for CI/CD
+- Production database not polluted with test data
+- Can test both cached and empty scenarios reliably
 
 ## Frontend Testing
 
@@ -273,10 +315,14 @@ jobs:
 
 ### Common Issues
 
+**Common Issues
+
 **Backend:**
-- Database state: Ensure `@Transactional` or manual cleanup between tests
-- Mocking: Use `@MockBean` for Spring-managed beans
-- Integration tests slow: Use `@DirtiesContext` sparingly
+- Database state: Ensure `@BeforeEach` seeds known data or use `@Transactional` rollback
+- Test database: Separate `test-codepop.db` configured via `@ActiveProfiles("test")`
+- Mocking: Use `@MockBean` for Spring-managed beans, `@Mock` for unit test dependencies
+- Integration tests slow: Use stub `QuizMaster` to avoid LLM calls (5-10 second reduction per test)
+- TransactionalOperations: Mock this in unit tests to test service orchestration independently
 
 **Frontend:**
 - Async timing: Always use `waitFor` for async assertions

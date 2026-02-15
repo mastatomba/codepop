@@ -83,6 +83,12 @@ npm run dev
 
 The frontend will start on `http://localhost:5173`
 
+**Note:** Development mode uses React StrictMode which may cause duplicate API calls. To test without this behavior:
+```bash
+npm run build    # Build production bundle
+npm run preview  # Serve on http://localhost:4173
+```
+
 ## 📁 Project Structure
 
 ```
@@ -143,25 +149,35 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🚧 Status
 
-**Backend:** ✅ MVP Complete
+**Backend:** ✅ Complete
 - REST API with quiz generation
+- OllamaQuizMaster implementation with qwen2.5-coder:7b
+- Transaction isolation pattern for long-running LLM calls
 - Topic validation and caching
-- 29 unit & integration tests
+- 29 unit & integration tests (all passing)
+- Test database isolation for fast tests
 - SQLite database with seeded data
+- Markdown support in questions
 
-**Frontend:** ✅ MVP Complete
+**Frontend:** ✅ Complete
 - Full quiz flow (homepage → quiz → results)
 - Immediate feedback on answers
+- Markdown rendering for code blocks in questions
 - Progress tracking
 - Score breakdown with review
 - 35 unit tests with MSW
 - Responsive design
 
+**Known Behavior:**
+- React StrictMode in development may show duplicate LLM generations for new topics
+- Production builds (`npm run preview`) do not have this issue
+- This is expected React 18+ behavior and does not affect production
+
 **Next Steps:**
-- LLM integration (currently stubbed)
 - Session tracking across multiple quizzes
 - Quiz history and statistics
 - Topic autocomplete/suggestions
+- Consider PostgreSQL for production (better than SQLite for concurrent writes)
 
 ---
 

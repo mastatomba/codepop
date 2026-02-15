@@ -37,6 +37,9 @@ class QuizServiceTest {
   @Mock(lenient = true)
   private QuizMaster quizMaster;
 
+  @Mock(lenient = true)
+  private QuizService.TransactionalOperations txOps;
+
   @InjectMocks private QuizService quizService;
 
   private Topic testTopic;
@@ -66,6 +69,18 @@ class QuizServiceTest {
             new QuestionOption(q1, "Option B", false),
             new QuestionOption(q1, "Option C", false),
             new QuestionOption(q1, "Option D", false));
+
+    // Configure txOps mock to delegate to repository mocks
+    when(txOps.findTopicByName(anyString()))
+        .thenAnswer(inv -> topicRepository.findByNameIgnoreCase(inv.getArgument(0)).orElse(null));
+    when(txOps.findAllTopics()).thenAnswer(inv -> topicRepository.findAll());
+    when(txOps.fetchQuestions(anyLong(), isNull()))
+        .thenAnswer(inv -> questionRepository.findByTopicId(inv.getArgument(0)));
+    when(txOps.fetchQuestions(anyLong(), anyString()))
+        .thenAnswer(
+            inv ->
+                questionRepository.findByTopicIdAndSubtopicContainingIgnoreCase(
+                    inv.getArgument(0), inv.getArgument(1)));
   }
 
   @Test

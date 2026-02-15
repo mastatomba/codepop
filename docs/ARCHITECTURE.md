@@ -34,11 +34,13 @@
 
 ### Backend (Spring Boot)
 - REST API endpoints for quiz operations
-- Topic validation against hardcoded list
+- Topic validation against database-stored topics
 - Question cache management in SQLite
-- LLM integration and prompt engineering
-- Response parsing and validation
-- Session tracking
+- LLM integration via QuizMaster interface (OllamaQuizMaster implementation)
+- Response parsing with markdown support
+- Transaction isolation for long-running LLM calls
+- Test database separation for fast, predictable tests
+- Session tracking (frontend-managed via excludeQuestionIds)
 - Error handling and recovery
 
 ### Database (SQLite)
@@ -76,10 +78,14 @@
    - If 5+ questions available, randomizes and selects 5
 
 4. **LLM Generation** (if needed)
-   - If fewer than 5 questions available (including when subtopic has no questions), calls LLM
+   - If fewer than 5 questions available (including when subtopic has no questions), calls QuizMaster
+   - Uses OllamaQuizMaster with qwen2.5-coder:7b model (temperature 0.8 for creativity)
    - Backend provides existing question texts to avoid duplicates
-   - LLM returns JSON with questions, options, answers, difficulty, explanations
-   - Backend validates and stores in SQLite with appropriate subtopic
+   - LLM prompt encourages markdown code blocks for better readability
+   - LLM returns JSON with questions, options, correct_index, difficulty, explanations
+   - Response parsing handles both wrapped JSON and raw JSON formats
+   - **Transaction isolation:** LLM call happens OUTSIDE any database transaction (can take 5-10 seconds)
+   - Backend validates and stores in SQLite with appropriate subtopic (short write transaction < 100ms)
 
 5. **Quiz Assembly**
    - Backend selects up to 5 questions (randomized if > 5 available)
@@ -169,10 +175,12 @@ GET /api/quiz/Java?excludeQuestionIds=1,2  # Java questions excluding 1 and 2
 - Error handling
 
 ### Spring AI - Ollama
-- Auto-configuration for Ollama client
-- Prompt templates for structured output
-- JSON response parsing
-- Retry and timeout handling
+- Auto-configuration for Ollama ChatClient
+- Uses qwen2.5-coder:7b model with temperature override (0.8 for quiz generation)
+- Prompt engineering for structured JSON output with markdown support
+- Fuzzy JSON boundary detection for robust parsing
+- Response cleanup (removes markdown wrapping if present)
+- Excluded from test environment via @Profile("!test")
 
 ### Spring Data JPA
 - Repository pattern for data access
@@ -181,17 +189,27 @@ GET /api/quiz/Java?excludeQuestionIds=1,2  # Java questions excluding 1 and 2
 
 ### SQLite JDBC Driver
 - Lightweight database connectivity
-- File-based storage (codepop.db)
+- File-based storage (codepop.db for production, test-codepop.db for tests)
 - No server setup required
+- **Transaction limitations:** Cannot handle long-running transactions (5+ seconds)
+- **Solution:** TransactionalOperations pattern isolates LLM calls from database transactions
 
 ## Deployment Architecture
 
 ### Development
-- Frontend: Vite dev server on localhost:5173
+- Frontend: Vite dev server on localhost:5173 (StrictMode enabled - may see duplicate API calls)
 - Backend: Spring Boot on localhost:8080
-- Ollama: Local instance on localhost:11434
-- Database: Local SQLite file
+- Ollama: Local instance on localhost:11434 with qwen2.5-coder:7b model
+- Database: Local SQLite file (codepop.db)
+- Test Database: Separate test-codepop.db for integration tests
 - Frontend proxies `/api` requests to backend
+- **Note:** React StrictMode causes double-rendering in dev - use `npm run build && npm run preview` to test without StrictMode
+
+### Production Preview (Local)
+- Frontend: `npm run build && npm run preview` (port 4173)
+- Backend: Spring Boot on localhost:8080
+- **StrictMode disabled** - no duplicate API calls
+- Tests production build locally before deployment
 
 ### Production (Option 1: Hybrid)
 - Frontend: Vercel/Netlify (static hosting)
@@ -217,12 +235,15 @@ GET /api/quiz/Java?excludeQuestionIds=1,2  # Java questions excluding 1 and 2
 
 Current architecture is optimized for POC/demo:
 - SQLite suitable for single-user or low traffic
+- **SQLite limitation:** Cannot handle long-running write transactions (LLM calls take 5-10 seconds)
+- **Mitigation:** TransactionalOperations pattern isolates LLM from transactions
 - Session data grows linearly with users
-- LLM calls are rate-limited by provider
+- LLM calls are rate-limited by provider (Ollama local instance)
 
 For production scale:
-- Migrate to PostgreSQL/MySQL
+- **Migrate to PostgreSQL/MySQL** - Better concurrency and transaction handling
 - Add Redis for session caching
-- Queue LLM requests with message broker
+- Queue LLM requests with message broker (async job processing)
 - Load balance backend instances
 - CDN for frontend assets
+- Consider serverless LLM APIs for scalability (vs local Ollama)

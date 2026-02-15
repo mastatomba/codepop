@@ -2,7 +2,8 @@ package nl.schoutens.codepop.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,7 +13,6 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Question {
 
   @Id
@@ -36,6 +36,9 @@ public class Question {
   @Column(columnDefinition = "TEXT")
   private String explanation;
 
+  @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<QuestionOption> options = new ArrayList<>();
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
 
@@ -44,6 +47,7 @@ public class Question {
     this.questionText = questionText;
     this.difficulty = difficulty;
     this.explanation = explanation;
+    this.options = new ArrayList<>();
   }
 
   public Question(
@@ -57,6 +61,12 @@ public class Question {
     this.subtopic = subtopic;
     this.difficulty = difficulty;
     this.explanation = explanation;
+    this.options = new ArrayList<>();
+  }
+
+  public void addOption(QuestionOption option) {
+    options.add(option);
+    option.setQuestion(this);
   }
 
   @PrePersist

@@ -9,11 +9,10 @@ import nl.schoutens.codepop.dto.OptionDTO;
 import nl.schoutens.codepop.dto.QuestionDTO;
 import nl.schoutens.codepop.dto.QuizDTO;
 import nl.schoutens.codepop.entity.Question;
-import nl.schoutens.codepop.entity.QuestionOption;
 import nl.schoutens.codepop.entity.Topic;
-import nl.schoutens.codepop.repository.QuestionOptionRepository;
 import nl.schoutens.codepop.repository.QuestionRepository;
 import nl.schoutens.codepop.repository.TopicRepository;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,30 +21,68 @@ public class QuizService {
 
   private final TopicRepository topicRepository;
   private final QuestionRepository questionRepository;
-  private final QuestionOptionRepository questionOptionRepository;
   private final QuizMaster quizMaster;
+  private final TransactionalOperations txOps;
 
   public QuizService(
       TopicRepository topicRepository,
       QuestionRepository questionRepository,
-      QuestionOptionRepository questionOptionRepository,
-      QuizMaster quizMaster) {
+      QuizMaster quizMaster,
+      TransactionalOperations txOps) {
     this.topicRepository = topicRepository;
     this.questionRepository = questionRepository;
-    this.questionOptionRepository = questionOptionRepository;
     this.quizMaster = quizMaster;
+    this.txOps = txOps;
   }
 
-  @Transactional
+  /**
+   * Inner component for transactional operations. Spring can proxy this as a separate bean,
+   * making @Transactional work properly.
+   */
+  @Component
+  public static class TransactionalOperations {
+    private final QuestionRepository questionRepository;
+    private final TopicRepository topicRepository;
+
+    public TransactionalOperations(
+        QuestionRepository questionRepository, TopicRepository topicRepository) {
+      this.questionRepository = questionRepository;
+      this.topicRepository = topicRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Question> fetchQuestions(Long topicId, String subtopic) {
+      if (subtopic != null && !subtopic.isEmpty()) {
+        return questionRepository.findByTopicIdAndSubtopicContainingIgnoreCase(topicId, subtopic);
+      }
+      return questionRepository.findByTopicId(topicId);
+    }
+
+    @Transactional(readOnly = true)
+    public Topic findTopicByName(String name) {
+      return topicRepository.findByNameIgnoreCase(name).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Topic> findAllTopics() {
+      return topicRepository.findAll();
+    }
+
+    @Transactional
+    public void saveQuestions(List<Question> questions) {
+      questionRepository.saveAll(questions);
+    }
+  }
+
   public QuizDTO getQuiz(String userInput, List<Long> excludeQuestionIds) {
-    // Parse user input and find topic in one step
+    // Parse user input and find topic (short read transaction)
     ParsedTopicResult parsed = parseAndFindTopic(userInput);
     if (parsed.topic == null) {
       throw new IllegalArgumentException("Topic not found: " + userInput);
     }
 
-    // 1. Get questions based on main topic and optional subtopic
-    List<Question> allQuestions = fetchQuestions(parsed.topic.getId(), parsed.subtopic);
+    // 1. Fetch existing questions (short read transaction)
+    List<Question> allQuestions = txOps.fetchQuestions(parsed.topic.getId(), parsed.subtopic);
 
     // 2. Filter out excluded questions (user already saw these)
     List<Question> availableQuestions =
@@ -61,20 +98,26 @@ public class QuizService {
 
       int neededCount = 5 - availableQuestions.size();
 
-      // Call LLM to generate new questions
+      // Call LLM to generate new questions (NO TRANSACTION - can take as long as needed)
       List<Question> newQuestions =
           quizMaster.generateQuestions(userInput, neededCount, existingQuestionTexts);
 
-      // Save new questions to database
+      // Save new questions (short write transaction)
       if (!newQuestions.isEmpty()) {
         for (Question newQ : newQuestions) {
           newQ.setTopic(parsed.topic);
           if (parsed.subtopic != null) {
             newQ.setSubtopic(parsed.subtopic);
           }
-          Question saved = questionRepository.save(newQ);
-          availableQuestions.add(saved);
         }
+        txOps.saveQuestions(newQuestions);
+
+        // Re-fetch all questions (short read transaction)
+        allQuestions = txOps.fetchQuestions(parsed.topic.getId(), parsed.subtopic);
+        availableQuestions =
+            allQuestions.stream()
+                .filter(q -> excludeQuestionIds == null || !excludeQuestionIds.contains(q.getId()))
+                .collect(Collectors.toList());
       }
     }
 
@@ -111,7 +154,7 @@ public class QuizService {
 
     // Strategy 1: Check if any word is an exact topic match
     for (int i = 0; i < words.length; i++) {
-      Topic topic = topicRepository.findByNameIgnoreCase(words[i]).orElse(null);
+      Topic topic = txOps.findTopicByName(words[i]);
       if (topic != null) {
         // Found main topic, extract subtopic from remaining words
         String subtopic = extractSubtopic(words, i);
@@ -158,7 +201,7 @@ public class QuizService {
 
   /** Fuzzy match: check if input contains topic name or vice versa. */
   private Topic fuzzyFindTopic(String input) {
-    List<Topic> allTopics = topicRepository.findAll();
+    List<Topic> allTopics = txOps.findAllTopics();
     String inputLower = input.toLowerCase();
 
     for (Topic t : allTopics) {
@@ -187,22 +230,9 @@ public class QuizService {
    * return questions matching that subtopic (may be empty, triggering LLM) - If no subtopic: return
    * all questions for main topic
    */
-  private List<Question> fetchQuestions(Long topicId, String subtopic) {
-    if (subtopic != null && !subtopic.isEmpty()) {
-      // User specified a subtopic: only return matching questions (empty if none exist)
-      // This allows LLM to generate new questions for the subtopic
-      return questionRepository.findByTopicIdAndSubtopicContainingIgnoreCase(topicId, subtopic);
-    }
-
-    // No subtopic specified: return all questions for the main topic
-    return questionRepository.findByTopicId(topicId);
-  }
-
   private QuestionDTO convertToQuestionDTO(Question question) {
-    List<QuestionOption> options = questionOptionRepository.findByQuestionId(question.getId());
-
     List<OptionDTO> optionDTOs =
-        options.stream()
+        question.getOptions().stream()
             .map(opt -> new OptionDTO(opt.getId(), opt.getOptionText(), opt.getIsCorrect()))
             .collect(Collectors.toList());
 

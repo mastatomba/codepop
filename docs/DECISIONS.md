@@ -57,17 +57,20 @@ This document outlines key architectural and design decisions made for CodePop.
 
 ### QuizMaster Interface Pattern
 **Decision:** LLM integration via interface, not direct implementation  
-**Current:** `OllamaQuizMaster` stub (returns empty list)  
-**Future:** Actual Ollama API implementation  
+**Implementation:** `OllamaQuizMaster` using Spring AI ChatClient with `qwen2.5-coder:7b` model  
 **Rationale:** 
-- Allows testing without LLM dependency
+- Allows testing without LLM dependency (test profile uses stub)
 - Easy to swap implementations (Ollama, GPT, Claude)
-- Interface defines contract: generateQuestions(topic, count, existingQuestionTexts)
-4. Backend calls LLM only if new questions needed
-5. Backend stores new questions in SQLite
-6. Backend returns quiz to frontend
+- Interface defines contract: `generateQuestions(topic, count, existingQuestionTexts)`
+- Separates LLM logic from service orchestration
+- `@Profile("!test")` excludes from test environment for fast, predictable tests
 
-**Rationale:** Cleaner separation of concerns, easier to test, better control over LLM calls and caching.
+**Implementation Details:**
+- Temperature: 0.8 (higher creativity for quiz generation vs 0.3 default)
+- Prompt includes markdown code block examples to encourage formatted questions
+- Response parsing handles both wrapped JSON and raw JSON with fuzzy boundary detection
+- LLM receives existing question texts to avoid duplicates
+- Questions support markdown formatting in frontend (ReactMarkdown)
 
 ### Question Generation: Training Data Only
 **Decision:** LLM generates questions from training knowledge, no web search  
@@ -254,15 +257,105 @@ public class Topic {
 }
 ```
 
+### Transaction Isolation Pattern
+**Decision:** Separate long-running LLM calls from database transactions using static inner `@Component` class  
+**Problem:** SQLite cannot handle long transactions (5-10 seconds for LLM generation causes "Unable to commit" errors)  
+**Solution:** `TransactionalOperations` inner static class with Spring proxy  
+
+**Architecture:**
+```java
+@Service
+public class QuizService {
+  private final TransactionalOperations txOps;
+  
+  @Component
+  public static class TransactionalOperations {
+    @Transactional(readOnly = true)
+    public List<Question> fetchQuestions(...) { }
+    
+    @Transactional
+    public void saveQuestions(...) { }
+  }
+  
+  public QuizDTO getQuiz(...) {
+    // NO @Transactional - orchestration only
+    List<Question> questions = txOps.fetchQuestions(...); // Short read tx
+    List<Question> newOnes = quizMaster.generate(...); // NO TRANSACTION
+    txOps.saveQuestions(newOnes); // Short write tx
+  }
+}
+```
+
+**Transaction Boundaries:**
+1. **Read topic**: `@Transactional(readOnly = true)` (< 10ms)
+2. **Read questions**: `@Transactional(readOnly = true)` with JOIN FETCH (< 50ms)
+3. **LLM generation**: NO TRANSACTION - can take 5-10 seconds
+4. **Save questions**: `@Transactional` write (< 100ms)
+5. **Re-fetch**: `@Transactional(readOnly = true)` (< 50ms)
+
+**Rationale:**
+- Spring can proxy static inner `@Component` independently from outer class
+- `@Transactional` annotations work properly (not bypassed like internal calls)
+- No circular dependencies (inner class is stateless)
+- SQLite only holds locks for milliseconds, not seconds
+- Clean separation: orchestration (service) vs data access (txOps)
+
+**Why Static Inner Class Works:**
+- Spring creates TWO separate proxy beans: `QuizService` and `TransactionalOperations`
+- When `quizService.getQuiz()` calls `txOps.fetchQuestions()`, it goes through Spring proxy
+- Transaction interceptor can apply properly
+- Alternative approaches failed: self-injection (circular dependency), separate class (more boilerplate)
+
+### Test Database Isolation
+**Decision:** Separate SQLite database for integration tests  
+**Implementation:**
+- `application-test.properties` configures `test-codepop.db`
+- `@ActiveProfiles("test")` on integration test classes
+- `@TestConfiguration` provides stub `QuizMaster` (returns empty list)
+- `@BeforeEach` seeds known test data
+- `@Profile("!test")` on `OllamaQuizMaster` excludes from test environment
+
+**Rationale:**
+- Tests run fast (no LLM calls, ~2 seconds for 29 tests)
+- Predictable results (no AI variability)
+- Production database not polluted with test data
+- Can reset test database easily (create-drop schema)
+
+## React StrictMode Behavior
+
+### Development vs Production
+**Known Issue:** React StrictMode in development causes `useEffect` to run twice  
+**Impact:** Can trigger duplicate API calls to backend when requesting new topics  
+**Severity:** Development-only (production builds disable StrictMode)
+
+**Modes Available:**
+```bash
+# Development mode (StrictMode enabled)
+npm run dev  # May show duplicate LLM generation for new topics
+
+# Production preview mode (StrictMode disabled)
+npm run build && npm run preview  # No duplicate generation
+
+# Production deployment
+npm run build  # Deploy dist/ folder (StrictMode disabled)
+```
+
+**Solution Options:**
+1. **Accept as dev-only** - Production unaffected, no code changes ✅ (Current)
+2. **Add AbortController** - Proper React pattern, cancels duplicate requests
+3. **Remove StrictMode** - Loses debugging benefits, not recommended
+
+**Recommendation:** Accept as development quirk since production preview mode confirmed no issue exists in production builds.
+
 ## Future Considerations
 
 ### Backend Enhancements
-- Implement `OllamaQuizMaster` with actual LLM integration
 - Add more seeded topics and questions
 - Persistent session storage (server-side tracking)
 - Difficulty level filtering as query parameter
 - Configurable question count
 - Improve subtopic extraction with NLP techniques
+- Consider PostgreSQL for production (better concurrency than SQLite)
 
 ### Frontend Enhancements
 - User accounts and progress tracking
