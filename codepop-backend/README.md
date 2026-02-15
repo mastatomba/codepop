@@ -32,9 +32,72 @@ codepop-backend/
 
 - JDK 17 or higher
 - Maven 3.6+ (or use included `./mvnw`)
-- Ollama running locally (optional - for future LLM integration)
+- Ollama running locally with `qwen2.5-coder:7b` model (see Ollama Setup below)
+
+## Ollama Setup
+
+### Installation
+
+**Linux:**
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**macOS:**
+```bash
+brew install ollama
+```
+
+**Windows:**
+Download from [ollama.com/download](https://ollama.com/download)
+
+### Starting Ollama
+
+```bash
+# Start Ollama service (keep running in a separate terminal)
+ollama serve
+```
+
+Ollama runs on `http://localhost:11434` by default.
+
+### Installing the Model
+
+```bash
+# Pull the qwen2.5-coder:7b model
+ollama pull qwen2.5-coder:7b
+```
+
+**Model Details:**
+- **Size**: ~4.7 GB
+- **Specialization**: Code generation and understanding
+- **Why this model?**: Optimized for technical content with high accuracy on programming questions
+
+### Verification
+
+```bash
+# Verify model is installed
+ollama list
+
+# Test the model
+ollama run qwen2.5-coder:7b "Explain what Java records are"
+```
+
+### Alternative Models
+
+To use a different model, edit `src/main/resources/application.properties`:
+
+```properties
+spring.ai.ollama.chat.options.model=your-model-name
+```
+
+Recommended alternatives:
+- `codellama:7b` - Meta's code-focused model
+- `deepseek-coder:6.7b` - Specialized for code
+- `mistral:7b` - General purpose
 
 ## Running the Application
+
+**Important:** Make sure Ollama is running before starting the backend!
 
 ```bash
 # Using Maven wrapper (recommended)
@@ -45,6 +108,10 @@ mvn spring-boot:run
 ```
 
 The backend will start on `http://localhost:8080`
+
+**Troubleshooting:**
+- If you see connection errors, check that Ollama is running: `curl http://localhost:11434`
+- If questions aren't generating, verify the model: `ollama list | grep qwen2.5-coder`
 
 ## Configuration
 

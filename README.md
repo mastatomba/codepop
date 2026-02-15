@@ -46,11 +46,78 @@ CodePop generates interactive multiple-choice quizzes on coding topics using AI.
 **Backend:**
 - JDK 17 or higher
 - Maven 3.6+
-- Ollama installed and running locally (or cloud LLM API key)
+- Ollama installed and running locally (see Ollama Setup below)
 
 **Frontend:**
 - Node.js 18+ (LTS recommended)
 - npm
+
+### Ollama Setup
+
+CodePop uses Ollama with the `qwen2.5-coder:7b` model for AI-powered question generation.
+
+#### Installing Ollama
+
+**Linux:**
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**macOS:**
+```bash
+brew install ollama
+```
+
+**Windows:**
+Download from [ollama.com/download](https://ollama.com/download)
+
+#### Starting Ollama
+
+```bash
+# Start Ollama service
+ollama serve
+```
+
+Ollama will run on `http://localhost:11434` by default.
+
+#### Installing the Model
+
+```bash
+# Pull the qwen2.5-coder:7b model (used by CodePop)
+ollama pull qwen2.5-coder:7b
+```
+
+**Model Details:**
+- **Model**: qwen2.5-coder:7b
+- **Size**: ~4.7 GB
+- **Optimized for**: Code generation and understanding
+- **Temperature**: 0.8 (configured in backend)
+
+#### Verifying Installation
+
+```bash
+# List installed models
+ollama list
+
+# Test the model
+ollama run qwen2.5-coder:7b "What is Java?"
+```
+
+If successful, you should see a response from the model.
+
+#### Using Alternative Models
+
+To use a different model, update `application.properties` in the backend:
+
+```properties
+# In codepop-backend/src/main/resources/application.properties
+spring.ai.ollama.chat.options.model=your-preferred-model
+```
+
+Popular alternatives:
+- `codellama:7b` - Meta's code-focused model
+- `deepseek-coder:6.7b` - Specialized coding model
+- `mistral:7b` - General purpose model
 
 ### Running Locally
 
