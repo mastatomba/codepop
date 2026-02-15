@@ -179,6 +179,7 @@
   align-items: flex-start;
   margin-bottom: 1.5rem;
   gap: 1rem;
+  width: 100%; /* Ensure header takes full width */
 }
 
 .question h2 {
@@ -186,6 +187,15 @@
   font-size: 1.5rem;
   color: #333;
   flex: 1;
+  width: 100%; /* Take full available width */
+  min-width: 0; /* Allow flex item to shrink below content size */
+  max-width: 100%; /* Prevent overflow */
+}
+
+/* Code blocks within question headers need full width */
+.question h2 pre {
+  max-width: 100%;
+  width: 100%;
 }
 
 .difficulty {
@@ -444,6 +454,38 @@
 .explanation p {
   margin: 0.5rem 0 0;
   color: #555;
+}
+
+/* Code blocks (for markdown rendering) */
+pre {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+  box-sizing: border-box;
+}
+
+code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  border: none;
+  display: block;
+  line-height: 1.5;
+}
+
+/* Inline code */
+:not(pre) > code {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 0.15rem 0.4rem;
 }
 
 .score-actions {
