@@ -6,9 +6,9 @@ This document describes the testing strategy and practices for the CodePop proje
 
 CodePop has comprehensive test coverage for both backend and frontend:
 
-- **Backend**: 29 tests (JUnit 5 + Mockito + Spring Boot Test)
+- **Backend**: 50 tests (JUnit 5 + Mockito + Spring Boot Test)
 - **Frontend**: 35 tests (Vitest + React Testing Library + MSW)
-- **Total**: 64 automated tests
+- **Total**: 85 automated tests
 
 ## Backend Testing
 
@@ -23,22 +23,24 @@ CodePop has comprehensive test coverage for both backend and frontend:
 
 ```
 codepop-backend/src/test/java/
-├── QuizServiceTest.java              # 10 unit tests (mocks TransactionalOperations)
-├── QuizControllerTest.java           # 6 unit tests (mocks QuizService)
-└── QuizControllerIntegrationTest.java # 12 integration tests (separate test DB)
+├── QuizServiceTest.java               # 10 unit tests (mocks TransactionalOperations)
+├── QuizControllerTest.java            # 6 unit tests (mocks QuizService)
+├── QuizControllerIntegrationTest.java # 12 integration tests (separate test DB)
+└── OllamaQuizMasterTest.java          # 21 unit tests (delimiter & JSON parsing)
 
 codepop-backend/src/test/resources/
-└── application-test.properties        # Test database configuration
+└── application-test.properties         # Test database configuration
 ```
 
 ### Test Types
 
-**Unit Tests** (`QuizServiceTest`, `QuizControllerTest`)
+**Unit Tests** (`QuizServiceTest`, `QuizControllerTest`, `OllamaQuizMasterTest`)
 - Test individual components in isolation
 - Mock dependencies (repositories, QuizMaster, TransactionalOperations)
-- Fast execution (~200ms total for 16 unit tests)
+- Fast execution (~300ms total for 37 unit tests)
 - Focus on business logic validation
 - `QuizServiceTest` mocks `TransactionalOperations` to test service orchestration
+- `OllamaQuizMasterTest` tests delimiter and JSON parsing with reflection for private methods
 
 **Integration Tests** (`QuizControllerIntegrationTest`)
 - Test complete API endpoints end-to-end
@@ -80,6 +82,13 @@ cd codepop-backend
 - ✅ Transaction isolation (TransactionalOperations pattern)
 - ✅ Test database isolation (separate test-codepop.db)
 - ✅ JOIN FETCH for eager loading (no N+1 queries)
+- ✅ **LLM Response Parsing** (new in OllamaQuizMasterTest):
+  - Delimiter format parsing (8 tests)
+  - JSON format fallback (5 tests)
+  - JSON extraction with brace balancing (8 tests)
+  - Code snippets with special characters (quotes, braces)
+  - Multi-line content and markdown code blocks
+  - Error recovery (missing fields, malformed responses)
 
 ### Test Isolation Strategy
 
@@ -106,11 +115,12 @@ public class OllamaQuizMaster implements QuizMaster { ... }
 ```
 
 **Benefits:**
-- Tests run fast (~2 seconds for all 29 tests)
+- Tests run fast (~6 seconds for all 50 tests)
 - Predictable results (no AI variability)
 - No Ollama dependency for CI/CD
 - Production database not polluted with test data
 - Can test both cached and empty scenarios reliably
+- Delimiter and JSON parsing both covered
 
 ## Frontend Testing
 

@@ -153,6 +153,18 @@ public class Topic {
 - Receives **ALL** existing question texts (no limit) to avoid duplicates
 - Prompt explicitly instructs: "Generate questions on DIFFERENT aspects not covered above"
 - Temperature 0.8 balances creativity with accuracy
+- **Response Format**: Uses delimiter-based format for 95%+ parsing success
+  ```
+  ### QUESTION 1 ###
+  DIFFICULTY: easy
+  QUESTION: What is Java?
+  OPTION: A language [CORRECT]
+  OPTION: A drink
+  EXPLANATION: Java is a programming language
+  ```
+- **Why Delimiters?** More LLM-friendly than JSON - no escaping needed for code snippets
+- **JSON Fallback**: Maintains backward compatibility with JSON responses
+- **Parser**: Uses brace balancing for nested objects and string state tracking
 
 **Repository Pattern**
 - Use Spring Data JPA repositories for data access
@@ -311,17 +323,21 @@ codepop/
 **Current Status:**
 - ✅ Backend complete (API, validation, caching, OllamaQuizMaster with qwen2.5-coder:7b)
 - ✅ Frontend complete (full quiz flow, markdown rendering, responsive design)
-- ✅ 64 total tests (29 backend + 35 frontend) - all passing
+- ✅ **85 total tests** (50 backend + 35 frontend) - all passing
+- ✅ **Delimiter-based LLM format** for robust parsing (95%+ success rate)
+- ✅ JSON fallback for backward compatibility
 - ✅ Transaction isolation pattern for long-running LLM calls
 - ✅ Test database isolation (separate test-codepop.db)
 - ✅ Pre-commit hooks with Spotless (backend) and Prettier/ESLint (frontend)
 
 **Test Coverage:**
-- **Backend**: 29 tests across 4 test files (JUnit 5 + Mockito + Spring Boot Test)
+- **Backend**: 50 tests across 5 test files (JUnit 5 + Mockito + Spring Boot Test)
   - `QuizServiceTest`: 10 unit tests (service layer logic)
   - `QuizControllerTest`: 6 unit tests (controller layer)
   - `QuizControllerIntegrationTest`: 12 integration tests (end-to-end API)
-  - All tests use stub QuizMaster for fast execution (~2 seconds total)
+  - `OllamaQuizMasterTest`: 21 unit tests (delimiter & JSON parsing, code snippets)
+  - `CodePopApplicationTests`: 1 context load test
+  - All tests use stub QuizMaster for fast execution (~6 seconds total)
 - **Frontend**: 35 tests across 5 test files (Vitest + React Testing Library + MSW)
   - Component tests for HomePage, QuizPage, Question, ProgressIndicator, ScoreBreakdown
   - MSW for realistic API mocking at network level

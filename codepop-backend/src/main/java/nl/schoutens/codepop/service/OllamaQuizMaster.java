@@ -74,21 +74,18 @@ public class OllamaQuizMaster implements QuizMaster {
     prompt.append(mediumCount).append(" medium, and ");
     prompt.append(hardCount).append(" hard questions\n");
     prompt.append("- Each question must have exactly 4 options\n");
-    prompt.append("- Exactly one option must be correct\n");
+    prompt.append("- Exactly one option must be marked [CORRECT]\n");
     prompt.append("- Create factual, verifiable questions (no opinions or ambiguous questions)\n");
     prompt.append("- Include explanations for each question\n");
     prompt.append("- Make the incorrect options plausible distractors\n");
     prompt.append(
-        "- ENCOURAGED: Include code snippets in questions (e.g., 'What is the output of: int x = 5;')\n");
-    prompt.append(
-        "- When including code, use proper JSON string escaping (escape quotes and special characters)\n\n");
+        "- ENCOURAGED: Include code snippets in questions using markdown code blocks\n\n");
 
     if (existingQuestionTexts != null && !existingQuestionTexts.isEmpty()) {
       prompt.append(
           "IMPORTANT: Avoid generating questions similar to these "
               + existingQuestionTexts.size()
               + " existing ones:\n");
-      // Show all existing questions (no limit) so LLM doesn't create duplicates
       for (String existingText : existingQuestionTexts) {
         prompt.append("- ").append(existingText).append("\n");
       }
@@ -98,34 +95,43 @@ public class OllamaQuizMaster implements QuizMaster {
               + " that are NOT covered above.\n\n");
     }
 
+    prompt.append("RESPONSE FORMAT:\n");
+    prompt.append("Use the delimiter-based format below. Do NOT use JSON.\n");
     prompt.append(
-        "CRITICAL: Return ONLY raw JSON. Do not wrap the ENTIRE response in markdown ```.\n");
-    prompt.append("Do not include explanatory text outside the JSON.\n");
-    prompt.append("Your response must start with { and end with }\n\n");
-    prompt.append(
-        "HOWEVER: You SHOULD use markdown code blocks INSIDE question strings for better readability.\n");
-    prompt.append(
-        "For multi-line code, use escaped newlines (\\n) and code blocks (```language\\ncode\\n```).\n\n");
-    prompt.append("Format examples:\n");
-    prompt.append("{\n");
-    prompt.append("  \"questions\": [\n");
-    prompt.append("    {\n");
-    prompt.append("      \"question\": \"What is the output of: print(2 + 2)?\",\n");
-    prompt.append("      \"options\": [\"4\", \"22\", \"TypeError\", \"SyntaxError\"],\n");
-    prompt.append("      \"correct_index\": 0,\n");
-    prompt.append("      \"difficulty\": \"easy\",\n");
-    prompt.append("      \"explanation\": \"Basic arithmetic\"\n");
-    prompt.append("    },\n");
-    prompt.append("    {\n");
-    prompt.append(
-        "      \"question\": \"What does this method return?\\n```java\\npublic int add(int a, int b) {\\n  return a + b;\\n}\\nadd(2, 3)\\n```\",\n");
-    prompt.append("      \"options\": [\"5\", \"23\", \"Error\", \"null\"],\n");
-    prompt.append("      \"correct_index\": 0,\n");
-    prompt.append("      \"difficulty\": \"easy\",\n");
-    prompt.append("      \"explanation\": \"The method adds two integers\"\n");
-    prompt.append("    }\n");
-    prompt.append("  ]\n");
+        "Code snippets can be included directly with no escaping - use markdown code blocks.\n\n");
+
+    prompt.append("### QUESTION 1 ###\n");
+    prompt.append("DIFFICULTY: easy\n");
+    prompt.append("QUESTION: What is the output of `print(2 + 2)`?\n");
+    prompt.append("OPTION: 4 [CORRECT]\n");
+    prompt.append("OPTION: 22\n");
+    prompt.append("OPTION: TypeError\n");
+    prompt.append("OPTION: SyntaxError\n");
+    prompt.append("EXPLANATION: The print function outputs the result of 2+2\n\n");
+
+    prompt.append("### QUESTION 2 ###\n");
+    prompt.append("DIFFICULTY: medium\n");
+    prompt.append("QUESTION: What does this method return?\n");
+    prompt.append("```java\n");
+    prompt.append("public int add(int a, int b) {\n");
+    prompt.append("  return a + b;\n");
     prompt.append("}\n");
+    prompt.append("add(2, 3)\n");
+    prompt.append("```\n");
+    prompt.append("OPTION: 5 [CORRECT]\n");
+    prompt.append("OPTION: 23\n");
+    prompt.append("OPTION: Error\n");
+    prompt.append("OPTION: null\n");
+    prompt.append("EXPLANATION: The method adds two integers and returns 5\n\n");
+
+    prompt.append("CRITICAL RULES:\n");
+    prompt.append("- Start each question with ### QUESTION N ### (where N is 1, 2, 3...)\n");
+    prompt.append("- Use DIFFICULTY: easy/medium/hard\n");
+    prompt.append("- Use QUESTION: for the question text\n");
+    prompt.append("- Use OPTION: for each option (mark correct one with [CORRECT])\n");
+    prompt.append("- Use EXPLANATION: for the explanation\n");
+    prompt.append("- Multi-line content (code blocks) can span multiple lines naturally\n");
+    prompt.append("- Generate ALL ").append(count).append(" questions in this format\n");
 
     return prompt.toString();
   }
@@ -135,6 +141,22 @@ public class OllamaQuizMaster implements QuizMaster {
 
     // Log raw response for debugging
     logger.debug("Raw LLM response length: {} chars", response.length());
+    logger.debug("Raw LLM response:\n{}", response);
+
+    // Strategy 1: Try delimiter format first (new preferred format)
+    if (response.contains("### QUESTION")) {
+      logger.debug("Detected delimiter format, using delimiter parser");
+      questions = parseDelimitedFormat(response);
+      if (!questions.isEmpty()) {
+        logger.info("Successfully parsed {} questions using delimiter format", questions.size());
+        return questions;
+      } else {
+        logger.warn("Delimiter format detected but parsing failed, trying JSON fallback");
+      }
+    }
+
+    // Strategy 2: Fall back to JSON parsing (backward compatibility)
+    logger.debug("Using JSON parser (fallback or no delimiter format detected)");
 
     // Clean response - try to extract JSON from various formats
     String cleanedResponse = extractJson(response);
@@ -146,6 +168,8 @@ public class OllamaQuizMaster implements QuizMaster {
           response.length() > 200 ? response.substring(0, 200) : response);
       return questions;
     }
+
+    logger.debug("Cleaned JSON response:\n{}", cleanedResponse);
 
     try {
       JsonNode root = objectMapper.readTree(cleanedResponse);
@@ -176,8 +200,9 @@ public class OllamaQuizMaster implements QuizMaster {
   }
 
   /**
-   * Extract JSON from LLM response, handling various formats: - Plain JSON - Markdown code blocks
-   * (```json or ```) - JSON embedded in explanatory text
+   * Extract JSON from LLM response using multiple strategies: 1. Remove outer markdown code blocks
+   * 2. Find JSON object boundaries 3. Balance braces to handle nested objects 4. Validate JSON
+   * structure
    */
   private String extractJson(String response) {
     if (response == null || response.isEmpty()) {
@@ -186,7 +211,7 @@ public class OllamaQuizMaster implements QuizMaster {
 
     String cleaned = response.trim();
 
-    // Strategy 1: Remove markdown code blocks
+    // Strategy 1: Remove outer markdown code blocks (```json or ```)
     if (cleaned.startsWith("```json")) {
       cleaned = cleaned.substring(7);
     } else if (cleaned.startsWith("```")) {
@@ -197,15 +222,178 @@ public class OllamaQuizMaster implements QuizMaster {
     }
     cleaned = cleaned.trim();
 
-    // Strategy 2: Try to find JSON object boundaries if embedded in text
+    // Strategy 2: Find JSON object boundaries
     int jsonStart = cleaned.indexOf('{');
-    int jsonEnd = cleaned.lastIndexOf('}');
-
-    if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+    if (jsonStart == -1) {
+      logger.error("No opening brace found in response");
+      return null;
     }
 
-    return cleaned.trim();
+    // Strategy 3: Balance braces to find matching closing brace
+    // This handles nested objects (e.g., code snippets with { } inside strings)
+    int jsonEnd = findMatchingBrace(cleaned, jsonStart);
+    if (jsonEnd == -1) {
+      logger.error("No matching closing brace found");
+      return null;
+    }
+
+    cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+
+    // Strategy 4: Validate it looks like JSON
+    if (!cleaned.startsWith("{") || !cleaned.endsWith("}")) {
+      logger.error("Extracted content doesn't look like JSON: {}", cleaned.substring(0, 100));
+      return null;
+    }
+
+    return cleaned;
+  }
+
+  /**
+   * Find the matching closing brace for the opening brace at startIndex. Handles nested braces and
+   * escaped characters inside strings.
+   */
+  private int findMatchingBrace(String text, int startIndex) {
+    int depth = 0;
+    boolean inString = false;
+    boolean escaped = false;
+
+    for (int i = startIndex; i < text.length(); i++) {
+      char c = text.charAt(i);
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (c == '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (c == '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString) {
+        if (c == '{') {
+          depth++;
+        } else if (c == '}') {
+          depth--;
+          if (depth == 0) {
+            return i;
+          }
+        }
+      }
+    }
+
+    return -1; // No matching brace found
+  }
+
+  /**
+   * Parse questions from delimiter-based format. Format: ### QUESTION N ### DIFFICULTY: easy
+   * QUESTION: text OPTION: option1 [CORRECT] OPTION: option2 EXPLANATION: text
+   *
+   * <p>This format is more robust than JSON for LLM generation - no escaping needed for code
+   * snippets.
+   */
+  private List<Question> parseDelimitedFormat(String response) {
+    List<Question> questions = new ArrayList<>();
+
+    // Split into question blocks using the delimiter
+    String[] blocks = response.split("###\\s*QUESTION\\s+\\d+\\s*###");
+
+    for (int i = 1; i < blocks.length; i++) { // Start at 1 to skip any preamble
+      String block = blocks[i].trim();
+      if (block.isEmpty()) {
+        continue;
+      }
+
+      try {
+        Question question = parseDelimitedQuestion(block);
+        if (validateQuestion(question)) {
+          questions.add(question);
+        }
+      } catch (Exception e) {
+        logger.warn("Failed to parse delimited question block {}, skipping: {}", i, e.getMessage());
+      }
+    }
+
+    logger.info("Successfully parsed {} questions from delimited format", questions.size());
+    return questions;
+  }
+
+  /**
+   * Parse a single question from a delimited block. Extracts DIFFICULTY, QUESTION, OPTIONs, and
+   * EXPLANATION.
+   */
+  private Question parseDelimitedQuestion(String block) {
+    String difficulty = null;
+    StringBuilder questionText = new StringBuilder();
+    List<String> options = new ArrayList<>();
+    List<Boolean> correctFlags = new ArrayList<>();
+    StringBuilder explanation = new StringBuilder();
+
+    String[] lines = block.split("\n");
+    String currentField = null;
+
+    for (String line : lines) {
+      String trimmed = line.trim();
+
+      if (trimmed.startsWith("DIFFICULTY:")) {
+        difficulty = trimmed.substring("DIFFICULTY:".length()).trim().toLowerCase();
+        currentField = "DIFFICULTY";
+      } else if (trimmed.startsWith("QUESTION:")) {
+        questionText.append(trimmed.substring("QUESTION:".length()).trim());
+        currentField = "QUESTION";
+      } else if (trimmed.startsWith("OPTION:")) {
+        String optionText = trimmed.substring("OPTION:".length()).trim();
+        boolean isCorrect = optionText.contains("[CORRECT]");
+        if (isCorrect) {
+          optionText = optionText.replace("[CORRECT]", "").trim();
+        }
+        options.add(optionText);
+        correctFlags.add(isCorrect);
+        currentField = "OPTION";
+      } else if (trimmed.startsWith("EXPLANATION:")) {
+        explanation.append(trimmed.substring("EXPLANATION:".length()).trim());
+        currentField = "EXPLANATION";
+      } else if (!trimmed.isEmpty()) {
+        // Multi-line content - append to current field
+        if ("QUESTION".equals(currentField)) {
+          questionText.append("\n").append(line); // Preserve original formatting for code blocks
+        } else if ("EXPLANATION".equals(currentField)) {
+          explanation.append("\n").append(line);
+        }
+      }
+    }
+
+    // Validate required fields
+    if (difficulty == null || questionText.length() == 0 || options.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Missing required fields: difficulty="
+              + difficulty
+              + ", questionText="
+              + (questionText.length() > 0)
+              + ", options="
+              + options.size());
+    }
+
+    // Build Question entity
+    Question question = new Question();
+    question.setQuestionText(questionText.toString().trim());
+    question.setDifficulty(parseDifficulty(difficulty));
+    question.setExplanation(explanation.length() > 0 ? explanation.toString().trim() : null);
+
+    // Add options
+    for (int i = 0; i < options.size(); i++) {
+      QuestionOption option = new QuestionOption();
+      option.setOptionText(options.get(i));
+      option.setIsCorrect(correctFlags.get(i));
+      question.addOption(option);
+    }
+
+    return question;
   }
 
   private Question parseQuestion(JsonNode node) {

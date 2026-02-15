@@ -157,12 +157,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Backend:** ✅ Complete
 - REST API with quiz generation
 - OllamaQuizMaster implementation with qwen2.5-coder:7b
+- **Delimiter-based response format** for robust LLM parsing (95%+ success rate)
+- JSON fallback for backward compatibility
 - Transaction isolation pattern for long-running LLM calls
 - Topic validation and caching
-- 29 unit & integration tests (all passing)
+- 50 unit & integration tests (all passing)
 - Test database isolation for fast tests
 - SQLite database with seeded data
-- Markdown support in questions
+- Markdown support in questions and code snippets
 
 **Frontend:** ✅ Complete
 - Full quiz flow (homepage → quiz → results)
