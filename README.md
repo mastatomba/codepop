@@ -1,6 +1,12 @@
-# CodePop 🎯
+<p align="center">
+  <img src="codepop-frontend/public/codepop_logo.png" alt="CodePop Logo" width="300">
+</p>
 
-> A dynamic AI-powered quiz generator for coding topics - pop quiz yourself on anything from Java to React!
+<h1 align="center">CodePop 🎯</h1>
+
+<p align="center">
+  <em>A dynamic AI-powered quiz generator for coding topics - pop quiz yourself on anything from Java to React!</em>
+</p>
 
 ## 📖 Description
 
@@ -252,6 +258,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Quiz history and statistics
 - Topic autocomplete/suggestions
 - Consider PostgreSQL for production (better than SQLite for concurrent writes)
+
+## 📸 Screenshots
+
+<p align="center">
+  <img src="docs/screen1.png" alt="CodePop Homepage" width="700">
+  <br>
+  <em>Homepage - Enter any coding topic to start your quiz</em>
+</p>
+
+<p align="center">
+  <img src="docs/screen2.png" alt="CodePop Quiz Page" width="700">
+  <br>
+  <em>Quiz page - Interactive questions with instant feedback and explanations</em>
+</p>
 
 ---
 
