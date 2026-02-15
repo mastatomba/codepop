@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { quizApi } from '../services/api';
 import Question from '../components/Question';
 import ProgressIndicator from '../components/ProgressIndicator';
@@ -9,6 +9,7 @@ import { getAskedQuestions, addAskedQuestions } from '../utils/sessionStorage';
 function QuizPage() {
   const { topic } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [quizData, setQuizData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +26,13 @@ function QuizPage() {
       try {
         setLoading(true);
         setError(null);
+
+        // Reset quiz state when starting a new quiz
+        setCurrentQuestionIndex(0);
+        setSelectedOptionId(null);
+        setShowFeedback(false);
+        setUserAnswers([]);
+        setIsQuizComplete(false);
 
         // Get previously asked questions for this topic from session storage
         const excludeQuestionIds = getAskedQuestions(topic);
@@ -56,7 +64,7 @@ function QuizPage() {
     };
 
     fetchQuiz();
-  }, [topic]);
+  }, [topic, location.state]);
 
   const handleOptionSelect = (optionId) => {
     if (!showFeedback) {
@@ -103,46 +111,65 @@ function QuizPage() {
     navigate('/');
   };
 
+  const handleContinueSameTopic = () => {
+    navigate(`/quiz/${encodeURIComponent(topic)}`, {
+      state: { refresh: Date.now() },
+    });
+  };
+
   if (loading) {
     return (
-      <div className="quiz-page loading">
-        <div className="spinner"></div>
-        <p>Loading quiz for "{topic}"...</p>
+      <div className="quiz-page loading page-with-logo">
+        <img src="/codepop_logo.png" alt="CodePop Logo" className="page-logo" />
+        <div className="page-content">
+          <div className="spinner"></div>
+          <p>Loading quiz for "{topic}"...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="quiz-page error">
-        <h2>Error</h2>
-        <p>{error}</p>
-        <button onClick={() => navigate('/')}>Back to Home</button>
+      <div className="quiz-page error page-with-logo">
+        <img src="/codepop_logo.png" alt="CodePop Logo" className="page-logo" />
+        <div className="page-content">
+          <h2>Error</h2>
+          <p>{error}</p>
+          <button onClick={() => navigate('/')}>Back to Home</button>
+        </div>
       </div>
     );
   }
 
   if (!quizData || !quizData.questions || quizData.questions.length === 0) {
     return (
-      <div className="quiz-page error">
-        <h2>No Questions Available</h2>
-        <p>
-          No questions found for "{topic}". Try a different topic or subtopic.
-        </p>
-        <button onClick={() => navigate('/')}>Back to Home</button>
+      <div className="quiz-page error page-with-logo">
+        <img src="/codepop_logo.png" alt="CodePop Logo" className="page-logo" />
+        <div className="page-content">
+          <h2>No Questions Available</h2>
+          <p>
+            No questions found for "{topic}". Try a different topic or subtopic.
+          </p>
+          <button onClick={() => navigate('/')}>Back to Home</button>
+        </div>
       </div>
     );
   }
 
   if (isQuizComplete) {
     return (
-      <div className="quiz-page complete">
-        <ScoreBreakdown
-          userAnswers={userAnswers}
-          totalQuestions={quizData.totalQuestions}
-          topic={quizData.topic}
-          onRetakeQuiz={handleRetakeQuiz}
-        />
+      <div className="quiz-page complete page-with-logo">
+        <img src="/codepop_logo.png" alt="CodePop Logo" className="page-logo" />
+        <div className="page-content">
+          <ScoreBreakdown
+            userAnswers={userAnswers}
+            totalQuestions={quizData.totalQuestions}
+            topic={quizData.topic}
+            onRetakeQuiz={handleRetakeQuiz}
+            onContinueSameTopic={handleContinueSameTopic}
+          />
+        </div>
       </div>
     );
   }
@@ -150,41 +177,44 @@ function QuizPage() {
   const currentQuestion = quizData.questions[currentQuestionIndex];
 
   return (
-    <div className="quiz-page">
-      <header>
-        <h1>Quiz: {quizData.topic}</h1>
-        <ProgressIndicator
-          current={currentQuestionIndex + 1}
-          total={quizData.totalQuestions}
-        />
-      </header>
+    <div className="quiz-page page-with-logo">
+      <img src="/codepop_logo.png" alt="CodePop Logo" className="page-logo" />
+      <div className="page-content">
+        <header>
+          <h1>Quiz: {quizData.topic}</h1>
+          <ProgressIndicator
+            current={currentQuestionIndex + 1}
+            total={quizData.totalQuestions}
+          />
+        </header>
 
-      <main>
-        <Question
-          question={currentQuestion}
-          selectedOptionId={selectedOptionId}
-          showFeedback={showFeedback}
-          onOptionSelect={handleOptionSelect}
-        />
+        <main>
+          <Question
+            question={currentQuestion}
+            selectedOptionId={selectedOptionId}
+            showFeedback={showFeedback}
+            onOptionSelect={handleOptionSelect}
+          />
 
-        <div className="quiz-actions">
-          {!showFeedback ? (
-            <button
-              onClick={handleSubmitAnswer}
-              disabled={selectedOptionId === null}
-              className="btn-submit"
-            >
-              Submit Answer
-            </button>
-          ) : (
-            <button onClick={handleNext} className="btn-next">
-              {currentQuestionIndex < quizData.questions.length - 1
-                ? 'Next Question'
-                : 'View Results'}
-            </button>
-          )}
-        </div>
-      </main>
+          <div className="quiz-actions">
+            {!showFeedback ? (
+              <button
+                onClick={handleSubmitAnswer}
+                disabled={selectedOptionId === null}
+                className="btn-submit"
+              >
+                Submit Answer
+              </button>
+            ) : (
+              <button onClick={handleNext} className="btn-next">
+                {currentQuestionIndex < quizData.questions.length - 1
+                  ? 'Next Question'
+                  : 'View Results'}
+              </button>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,10 @@
-function ScoreBreakdown({ userAnswers, totalQuestions, topic, onRetakeQuiz }) {
+function ScoreBreakdown({
+  userAnswers,
+  totalQuestions,
+  topic,
+  onRetakeQuiz,
+  onContinueSameTopic,
+}) {
   const correctCount = userAnswers.filter((answer) => answer.isCorrect).length;
   const percentage = Math.round((correctCount / totalQuestions) * 100);
 
@@ -77,7 +83,10 @@ function ScoreBreakdown({ userAnswers, totalQuestions, topic, onRetakeQuiz }) {
       </div>
 
       <div className="score-actions">
-        <button onClick={onRetakeQuiz} className="btn-primary">
+        <button onClick={onContinueSameTopic} className="btn-primary">
+          Continue with {topic}
+        </button>
+        <button onClick={onRetakeQuiz} className="btn-secondary">
           Take Another Quiz
         </button>
       </div>

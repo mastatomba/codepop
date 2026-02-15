@@ -1,8 +1,38 @@
-/* Home Page */
-.home-page {
-  max-width: 600px;
+/* Shared Page Layout with Logo */
+.page-with-logo {
+  max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.page-logo {
+  width: 200px;
+  height: auto;
+  flex-shrink: 0;
+  margin-top: 2rem;
+}
+
+.page-content {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 800px) {
+  .page-logo {
+    display: none;
+  }
+
+  .page-with-logo {
+    max-width: 600px;
+  }
+}
+
+/* Home Page */
+.home-page {
+  /* Uses .page-with-logo layout */
 }
 
 .home-page header {
@@ -96,9 +126,7 @@
 
 /* Quiz Page */
 .quiz-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
+  /* Layout now handled by .page-with-logo and .page-content */
 }
 
 .quiz-page header {
@@ -296,8 +324,7 @@
 
 /* Score Breakdown */
 .score-breakdown {
-  max-width: 800px;
-  margin: 0 auto;
+  /* Layout now handled by .page-content wrapper */
 }
 
 .score-header {
@@ -420,7 +447,10 @@
 }
 
 .score-actions {
-  text-align: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .btn-primary {
@@ -440,6 +470,27 @@
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  padding: 0.875rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #667eea;
+  background: white;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    background-color 0.2s;
+}
+
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  background: #f8f9ff;
+  box-shadow: 0 6px 12px rgba(102, 126, 234, 0.2);
 }
 
 /* Loading & Error States */

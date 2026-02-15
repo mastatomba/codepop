@@ -44,6 +44,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={3}
         topic="Java"
         onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
@@ -58,6 +59,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={3}
         topic="Java"
         onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
@@ -77,6 +79,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={3}
         topic="Java"
         onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
@@ -99,6 +102,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={5}
         topic="Java"
         onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
@@ -112,6 +116,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={3}
         topic="Java"
         onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
@@ -127,6 +132,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={3}
         topic="Java"
         onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
@@ -144,6 +150,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={3}
         topic="Java"
         onRetakeQuiz={handleRetake}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
@@ -155,6 +162,28 @@ describe('ScoreBreakdown', () => {
     expect(handleRetake).toHaveBeenCalledTimes(1);
   });
 
+  it('calls onContinueSameTopic when continue button is clicked', async () => {
+    const user = userEvent.setup();
+    const handleContinue = vi.fn();
+
+    render(
+      <ScoreBreakdown
+        userAnswers={mockUserAnswers}
+        totalQuestions={3}
+        topic="Java"
+        onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={handleContinue}
+      />
+    );
+
+    const continueButton = screen.getByRole('button', {
+      name: /continue with java/i,
+    });
+    await user.click(continueButton);
+
+    expect(handleContinue).toHaveBeenCalledTimes(1);
+  });
+
   it('displays explanations when available', () => {
     render(
       <ScoreBreakdown
@@ -162,6 +191,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={3}
         topic="Java"
         onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
@@ -176,6 +206,7 @@ describe('ScoreBreakdown', () => {
         totalQuestions={3}
         topic="Java"
         onRetakeQuiz={vi.fn()}
+        onContinueSameTopic={vi.fn()}
       />
     );
 
