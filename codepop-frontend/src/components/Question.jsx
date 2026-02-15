@@ -1,3 +1,4 @@
+import ReactMarkdown from 'react-markdown';
 import QuestionOption from './QuestionOption';
 
 function Question({
@@ -14,7 +15,9 @@ function Question({
   return (
     <div className="question">
       <div className="question-header">
-        <h2>{question.text}</h2>
+        <h2>
+          <ReactMarkdown>{question.text}</ReactMarkdown>
+        </h2>
         <span
           className={`difficulty difficulty-${question.difficulty.toLowerCase()}`}
         >
@@ -53,7 +56,7 @@ function Question({
           {question.explanation && (
             <div className="explanation">
               <h4>Explanation:</h4>
-              <p>{question.explanation}</p>
+              <ReactMarkdown>{question.explanation}</ReactMarkdown>
             </div>
           )}
         </div>
